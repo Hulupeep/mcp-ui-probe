@@ -262,20 +262,67 @@ export class FlowEngine {
 
   private async handleCustomDropdown(page: Page, element: any, field: FormField, value: any): Promise<void> {
     try {
-      // Common patterns for custom dropdowns
+      logger.info('Handling custom dropdown', { fieldName: field.name, value });
+
+      // First check if this is a contenteditable or input-like element
+      const tagName = await element.evaluate((el: any) => el.tagName?.toLowerCase());
+      const isContentEditable = await element.evaluate((el: any) => el.contentEditable === 'true');
+      const role = await element.getAttribute('role');
+
+      // For React Select, Material UI, Radix UI, etc.
+      if (role === 'combobox' || role === 'searchbox' || isContentEditable) {
+        // Try typing and selecting
+        await element.click();
+        await page.waitForTimeout(200);
+
+        // Clear existing value
+        await page.keyboard.press('Control+A');
+        await page.keyboard.press('Backspace');
+
+        // Type the value
+        await page.keyboard.type(value.toString());
+        await page.waitForTimeout(500);
+
+        // Try to select the option
+        const enterWorked = await page.keyboard.press('Enter').then(() => true).catch(() => false);
+        if (!enterWorked) {
+          await page.keyboard.press('Tab');
+        }
+
+        logger.info('Used keyboard input for custom dropdown');
+        return;
+      }
 
       // Pattern 1: Click to open dropdown
       await element.click();
       await page.waitForTimeout(500);
 
-      // Look for dropdown options
+      // Enhanced option selectors for modern components
       const optionSelectors = [
+        // React Select
+        `div[id*="react-select"][id*="option"]:has-text("${value}")`,
+        `.react-select__option:has-text("${value}")`,
+
+        // Material UI
+        `li[role="option"]:has-text("${value}")`,
+        `.MuiMenuItem-root:has-text("${value}")`,
+
+        // Radix UI
         `[role="option"]:has-text("${value}")`,
+        `[data-radix-collection-item]:has-text("${value}")`,
+
+        // Ant Design
+        `.ant-select-item:has-text("${value}")`,
+        `.ant-select-dropdown:visible >> text="${value}"`,
+
+        // Generic patterns
         `[role="listbox"] >> text="${value}"`,
+        `.dropdown-menu:visible >> text="${value}"`,
         `.dropdown-item:has-text("${value}")`,
         `.select-option:has-text("${value}")`,
         `li:has-text("${value}")`,
-        `[data-value="${value}"]`
+        `[data-value="${value}"]`,
+        `[aria-label="${value}"]`
       ];
 
       let optionFound = false;
@@ -294,19 +341,80 @@ export class FlowEngine {
       }
 
       if (!optionFound) {
-        // Pattern 2: Type to filter (for combobox)
-        logger.info('Trying combobox pattern', { value });
-        await element.fill('');
-        await element.type(value);
-        await page.waitForTimeout(500);
+        // Pattern 2: Try JavaScript evaluation for shadow DOM or complex components
+        logger.info('Trying JavaScript evaluation pattern', { value });
 
-        // Try to click first matching option
-        const filteredOption = page.locator(`[role="option"]`).first();
-        if (await filteredOption.isVisible({ timeout: 1000 })) {
-          await filteredOption.click();
-        } else {
-          // Press Enter to select
-          await element.press('Enter');
+        const jsClicked = await page.evaluate((val) => {
+          // Find all potential option elements
+          const options = document.querySelectorAll(
+            '[role="option"], .dropdown-item, .select-option, li[data-value], [aria-label]'
+          );
+
+          for (let i = 0; i < options.length; i++) {
+            const option = options[i];
+            const text = option.textContent || option.getAttribute('aria-label') || '';
+            if (text.includes(val)) {
+              (option as HTMLElement).click();
+              return true;
+            }
+          }
+
+          // Try shadow DOM
+          const shadowHosts = document.querySelectorAll('*');
+          for (let i = 0; i < shadowHosts.length; i++) {
+            const host = shadowHosts[i];
+            if ((host as any).shadowRoot) {
+              const shadowOptions = (host as any).shadowRoot.querySelectorAll(
+                '[role="option"], [data-value]'
+              );
+              for (let j = 0; j < shadowOptions.length; j++) {
+                const option = shadowOptions[j];
+                const text = option.textContent || '';
+                if (text.includes(val)) {
+                  (option as HTMLElement).click();
+                  return true;
+                }
+              }
+            }
+          }
+
+          return false;
+        }, value.toString());
+
+        if (jsClicked) {
+          logger.info('Selected option via JavaScript evaluation');
+          return;
+        }
+
+        // Pattern 3: Keyboard navigation as fallback
+        logger.info('Trying keyboard navigation pattern', { value });
+        await element.focus();
+        await page.keyboard.press('Space'); // Open dropdown
+
+        // Navigate through options
+        let found = false;
+        for (let i = 0; i < 20; i++) { // Max 20 attempts
+          await page.keyboard.press('ArrowDown');
+          await page.waitForTimeout(100);
+
+          // Check if current option matches
+          const currentText = await page.evaluate(() => {
+            const focused = document.activeElement;
+            return focused?.textContent || focused?.getAttribute('aria-label') || '';
+          });
+
+          if (currentText.includes(value.toString())) {
+            await page.keyboard.press('Enter');
+            found = true;
+            logger.info('Selected option via keyboard navigation');
+            break;
+          }
+        }
+
+        if (!found) {
+          logger.warn('Could not select dropdown option', { field: field.name, value });
+          // Close dropdown
+          await page.keyboard.press('Escape');
         }
       }
     } catch (error) {
@@ -346,9 +454,27 @@ export class FlowEngine {
         break;
 
       default:
-        // Clear field first, then type
-        await element.clear();
-        await element.fill(String(value));
+        // Check if element is clearable (input/textarea)
+        const tagName = await element.evaluate((el: HTMLElement) => el.tagName.toLowerCase());
+
+        if (tagName === 'input' || tagName === 'textarea') {
+          // Clear field first, then type
+          await element.clear();
+          await element.fill(String(value));
+        } else if (tagName === 'select') {
+          // Handle native select element
+          try {
+            await element.selectOption(value);
+          } catch (error) {
+            logger.warn('Failed to select option in native select', { error });
+            // Try alternative approach
+            await element.focus();
+            await page.keyboard.type(String(value));
+          }
+        } else {
+          // For other elements (contenteditable, etc.), just fill
+          await element.fill(String(value));
+        }
         break;
     }
 

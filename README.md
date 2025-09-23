@@ -2,6 +2,8 @@
 
 **Stop writing code to test websites. Just tell the AI what to do in plain English.**
 
+🎉 **NEW: AI-Powered Testing with GPT-4/Claude** - Add your OpenAI or Anthropic API key for intelligent test understanding! See [LLM Integration Guide](docs/LLM-INTEGRATION.md) for details.
+
 ## What Is This? (In Simple Terms)
 
 MCP UI Probe is a tool that lets you test websites by describing what you want to do AND where to do it:

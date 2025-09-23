@@ -41,8 +41,9 @@ export class DataSynthesizer {
   generateFieldData(field: FormField, overrides?: Record<string, any>): any {
     const fieldName = field.name.toLowerCase();
 
-    // Check for overrides first
-    if (overrides && overrides[field.name]) {
+    // Check for overrides first - MUST handle empty strings!
+    if (overrides && field.name in overrides) {
+      // Use hasOwnProperty or 'in' operator to handle empty strings
       return overrides[field.name];
     }
 

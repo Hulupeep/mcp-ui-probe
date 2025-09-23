@@ -8,6 +8,10 @@ import {
 import { PlaywrightDriver } from '../drivers/playwright.js';
 import { formInferenceEngine } from '../infer/form.js';
 import { flowEngine } from '../flows/flowEngine.js';
+import { GoalParser } from '../utils/goalParser.js';
+import { LLMStrategy } from '../llm/llmStrategy.js';
+import { WorkflowDecomposer } from '../llm/workflowDecomposer.js';
+import { AdaptiveExecutor } from '../llm/adaptiveExecutor.js';
 import {
   MCPToolResult,
   NavigateParams,
@@ -28,6 +32,9 @@ export class MCPServer {
   private server: Server;
   private driver: PlaywrightDriver;
   private testRuns: Map<string, TestRun> = new Map();
+  private llmStrategy: LLMStrategy;
+  private workflowDecomposer: WorkflowDecomposer;
+  private adaptiveExecutor: AdaptiveExecutor;
 
   constructor() {
     this.server = new Server(
@@ -43,6 +50,12 @@ export class MCPServer {
     );
 
     this.driver = new PlaywrightDriver();
+
+    // Initialize LLM components
+    this.llmStrategy = new LLMStrategy();
+    this.workflowDecomposer = new WorkflowDecomposer();
+    this.adaptiveExecutor = new AdaptiveExecutor();
+
     this.setupToolHandlers();
   }
 
@@ -537,18 +550,59 @@ export class MCPServer {
     const steps: any[] = [];
 
     try {
-      // Step 1: Navigate if URL provided
-      if (params.url) {
-        steps.push({ step: 'navigate', status: 'starting' });
-        const navResult = await this.handleNavigate({ url: params.url });
-        if (!navResult.success) {
-          errors.push({
-            step: 'navigate',
-            error: 'Navigation failed - page might be 404',
-            details: navResult.data
-          });
+      // Use LLM to parse the natural language goal, fall back to regex if no API key
+      const parsedGoal = await this.llmStrategy.parseGoal(params.goal);
+      logger.info('Parsed goal with LLM', { parsedGoal });
+
+      steps.push({ step: 'parse_goal', status: 'completed', parsed: parsedGoal, usedLLM: !!process.env.OPENAI_API_KEY });
+
+      // Check if this is a multi-step workflow
+      if (parsedGoal.action === 'sequence' || params.goal.includes(' then ') || params.goal.includes(' and ')) {
+        // Decompose into atomic steps
+        const workflowSteps = await this.workflowDecomposer.decompose(params.goal);
+        const optimizedSteps = await this.workflowDecomposer.optimize(workflowSteps);
+
+        logger.info('Decomposed workflow', { originalSteps: workflowSteps.length, optimized: optimizedSteps.length });
+        steps.push({ step: 'workflow_decomposition', status: 'completed', stepCount: optimizedSteps.length });
+
+        // Execute with adaptive executor for better error recovery
+        const page = await this.driver.getPage();
+        const result = await this.adaptiveExecutor.executeSequence(page, optimizedSteps);
+
+        return {
+          success: result.success,
+          data: {
+            goal: params.goal,
+            parsedGoal,
+            workflowSteps: optimizedSteps,
+            executionResult: result,
+            steps,
+            errors: result.errors || errors
+          }
+        };
+      }
+
+      // Step 1: Navigate if URL provided or if action is navigate
+      if (params.url || parsedGoal.action === 'navigate') {
+        const url = params.url || parsedGoal.url || (params.goal.match(/https?:\/\/[^\s]+/)?.[0]);
+        if (url) {
+          steps.push({ step: 'navigate', status: 'starting' });
+          const navResult = await this.handleNavigate({ url });
+          if (!navResult.success) {
+            // Try to get recovery suggestions from LLM
+            const interpretation = await this.llmStrategy.interpretError(
+              'Navigation failed',
+              { url, response: navResult.data }
+            );
+            errors.push({
+              step: 'navigate',
+              error: 'Navigation failed - page might be 404',
+              details: navResult.data,
+              suggestions: interpretation.suggestions
+            });
+          }
+          steps.push({ step: 'navigate', status: 'completed', url });
         }
-        steps.push({ step: 'navigate', status: 'completed', url: params.url });
       }
 
       // Step 2: Analyze UI
@@ -564,36 +618,129 @@ export class MCPServer {
         }
       });
 
-      // Step 3: Check if this is a button click goal
-      const isButtonGoal = params.goal.toLowerCase().includes('click') ||
-                          params.goal.toLowerCase().includes('button') ||
-                          params.goal.toLowerCase().includes('link');
-
-      if (isButtonGoal) {
-        // Extract button text from goal
-        const buttonMatch = params.goal.match(/["']([^"']+)["']/) ||
-                           params.goal.match(/(?:click|press)\s+(?:the\s+)?([\w\s]+?)(?:\s+button|\s+link|$)/i);
-
-        if (buttonMatch) {
-          const buttonText = buttonMatch[1];
+      // Step 3: Handle based on parsed goal action
+      if (parsedGoal.action === 'click') {
+        const buttonText = parsedGoal.target || '';
+        if (buttonText) {
           steps.push({ step: 'click_button', status: 'starting', target: buttonText });
 
           const clickResult = await this.handleClickButton({ text: buttonText });
           steps.push({ step: 'click_button', status: 'completed', result: clickResult.data });
 
+          // After clicking, verify the resulting page
+          await this.verifyPageAfterAction(clickResult.data.currentUrl, steps, errors);
+
           return {
             success: true,
             data: {
               goal: params.goal,
+              parsedGoal,
               steps,
               result: 'completed',
-              clickResult: clickResult.data
+              clickResult: clickResult.data,
+              errors
             }
           };
         }
+      } else if (parsedGoal.action === 'fill' || parsedGoal.action === 'submit') {
+
+        // Form-based flow
+        if (analysis.forms.length === 0) {
+          throw new MCPUIError('No forms found on the current page', 'E_NO_FORMS', { url: params.url });
+        }
+
+        steps.push({ step: 'infer_form', status: 'starting' });
+        const inference = await formInferenceEngine.inferForm(analysis, {
+          goal: params.goal,
+        });
+
+        // Apply constraints from parsed goal
+        if (parsedGoal.constraints) {
+          Object.assign(inference.formSchema, parsedGoal.constraints);
+        }
+
+        if (inference.confidence < 0.3) {
+          errors.push({
+            step: 'infer_form',
+            error: 'Low confidence form inference',
+            confidence: inference.confidence,
+            goal: params.goal,
+            availableForms: analysis.forms.length
+          });
+        }
+        steps.push({
+          step: 'infer_form',
+          status: 'completed',
+          confidence: inference.confidence,
+          fields: inference.formSchema.fields.length
+        });
+
+        // Step 5: Execute flow
+        steps.push({ step: 'execute', status: 'starting' });
+        const page = await this.driver.getPage();
+        const testRun = await flowEngine.executeFlow(
+          page,
+          inference.formSchema,
+          parsedGoal.constraints
+        );
+
+        // Store test run
+        this.testRuns.set(testRun.runId, testRun);
+
+        steps.push({ step: 'execute', status: 'completed', runId: testRun.runId });
+
+        // Check for validation errors after form submission
+        if (parsedGoal.action === 'submit') {
+          const validationCheck = await this.checkValidationErrors(page);
+          if (!validationCheck.isValid) {
+            errors.push({
+              step: 'validation',
+              error: 'Form validation failed',
+              messages: validationCheck.errors
+            });
+          }
+          steps.push({ step: 'validation', status: validationCheck.isValid ? 'passed' : 'failed', errors: validationCheck.errors });
+        }
+
+        return {
+          success: true,
+          data: {
+            ...testRun,
+            parsedGoal,
+            steps,
+            errors
+          },
+        };
+      } else if (parsedGoal.action === 'verify' || parsedGoal.action === 'test') {
+        // Handle verification/test goals
+        const page = await this.driver.getPage();
+        const currentUrl = page.url();
+
+        steps.push({ step: 'verify', status: 'starting', url: currentUrl });
+
+        // Use the verify_page tool
+        const verifyResult = await verifyPage(page, {
+          expectedContent: [],
+          minContentLength: 100,
+          checkVisibility: true
+        });
+
+        const isValid = verifyResult.success !== false;
+        steps.push({ step: 'verify', status: isValid ? 'passed' : 'failed', result: verifyResult });
+
+        return {
+          success: isValid,
+          data: {
+            goal: params.goal,
+            parsedGoal,
+            steps,
+            verifyResult,
+            errors: verifyResult.failures || []
+          }
+        };
       }
 
-      // Step 4: Form-based flow
+      // Default: try form flow
       steps.push({ step: 'infer_form', status: 'starting' });
       const inference = await formInferenceEngine.inferForm(analysis, {
         goal: params.goal,
@@ -615,7 +762,7 @@ export class MCPServer {
         fields: inference.formSchema.fields.length
       });
 
-      // Step 5: Execute flow
+      // Execute flow
       steps.push({ step: 'execute', status: 'starting' });
       const page = await this.driver.getPage();
       const testRun = await flowEngine.executeFlow(
@@ -633,6 +780,7 @@ export class MCPServer {
         success: true,
         data: {
           ...testRun,
+          parsedGoal,
           steps,
           errors
         },
@@ -926,6 +1074,151 @@ export class MCPServer {
         stop: Date.now(),
       })),
     });
+  }
+
+  private async checkValidationErrors(page: any): Promise<{ isValid: boolean; errors: string[] }> {
+    const errors: string[] = [];
+
+    try {
+      // Check if we're still on the same page (form didn't submit)
+      const currentUrl = page.url();
+      await page.waitForTimeout(500); // Wait a bit for validation messages to appear
+
+      // Check for JavaScript runtime errors displayed in the page
+      // This catches errors like "Cannot destructure property 'error' of '(intermediate value)' as it is undefined"
+      const pageText = await page.evaluate(() => document.body?.innerText || '');
+
+      // Common JavaScript error patterns
+      const jsErrorPatterns = [
+        /Cannot (destructure|read) propert/i,
+        /is not defined/i,
+        /is not a function/i,
+        /TypeError:/i,
+        /ReferenceError:/i,
+        /SyntaxError:/i,
+        /Uncaught/i,
+        /undefined is not/i,
+        /null is not/i
+      ];
+
+      for (const pattern of jsErrorPatterns) {
+        if (pattern.test(pageText)) {
+          // Extract the error message
+          const lines = pageText.split('\n');
+          for (const line of lines) {
+            if (pattern.test(line) && line.length < 300) { // Avoid huge stack traces
+              errors.push(`JavaScript Error: ${line.trim()}`);
+              break;
+            }
+          }
+        }
+      }
+
+      // Look for common validation error patterns
+      const errorSelectors = [
+        '.error-message',
+        '.validation-error',
+        '.field-error',
+        '[aria-invalid="true"]',
+        '.is-invalid',
+        '.has-error',
+        '[role="alert"]',
+        '.alert-danger',
+        '.text-danger',
+        '.invalid-feedback',
+        'span.error',
+        'div.error'
+      ];
+
+      for (const selector of errorSelectors) {
+        const elements = await page.$$(selector);
+        for (const element of elements) {
+          const isVisible = await element.isVisible().catch(() => false);
+          if (isVisible) {
+            const text = await element.textContent();
+            if (text && text.trim() && !errors.includes(text.trim())) {
+              errors.push(text.trim());
+            }
+          }
+        }
+      }
+
+      // Check for HTML5 validation messages
+      const invalidInputs = await page.$$('input:invalid, select:invalid, textarea:invalid');
+      for (const input of invalidInputs) {
+        const validationMessage = await input.evaluate((el: any) => el.validationMessage);
+        if (validationMessage && !errors.includes(validationMessage)) {
+          errors.push(validationMessage);
+        }
+      }
+
+      // Check if form is still visible (indicating it didn't submit)
+      const formStillVisible = await page.$('form').then(f => f?.isVisible()).catch(() => false);
+      if (formStillVisible && errors.length === 0) {
+        // Form didn't submit but no explicit errors - check for generic indicators
+        const pageContent = await page.content();
+        if (pageContent.includes('Please correct') ||
+            pageContent.includes('Invalid') ||
+            pageContent.includes('Required field')) {
+          errors.push('Form validation failed - please check all required fields');
+        }
+      }
+
+      logger.info('Validation check', { errors, isValid: errors.length === 0 });
+
+    } catch (error) {
+      logger.error('Error checking validation', { error });
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
+  private async verifyPageAfterAction(url: string, steps: any[], errors: any[]): Promise<void> {
+    try {
+      const page = await this.driver.getPage();
+      const content = await page.content();
+
+      // Check for 404 indicators
+      const is404 = content.includes('404') &&
+                   (content.includes('Not Found') ||
+                    content.includes('not found') ||
+                    content.includes("doesn't exist") ||
+                    content.includes('Page not found'));
+
+      if (is404) {
+        errors.push({
+          step: 'verify_after_action',
+          error: 'Navigated to a 404 page after action',
+          url,
+          severity: 'critical'
+        });
+      }
+
+      // Check for empty content
+      const textContent = await page.evaluate(() => document.body?.innerText || '');
+      if (textContent.length < 100) {
+        errors.push({
+          step: 'verify_after_action',
+          error: 'Page has insufficient content',
+          contentLength: textContent.length,
+          url,
+          severity: 'medium'
+        });
+      }
+
+      steps.push({
+        step: 'verify_after_action',
+        status: is404 ? 'failed' : 'passed',
+        url,
+        is404,
+        contentLength: textContent.length
+      });
+    } catch (error) {
+      logger.error('Error verifying page after action', { error });
+    }
   }
 
   async start(): Promise<void> {

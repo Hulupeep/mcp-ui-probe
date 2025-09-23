@@ -8,6 +8,20 @@ export interface MCPToolResult {
   artifacts?: Record<string, string>;
 }
 
+// Natural Language Goal Parsing Types
+export interface ParsedGoal {
+  action: string;
+  target?: string;
+  targetType?: string;
+  value?: any;
+  url?: string;
+  formData?: Record<string, any>;
+  submit?: boolean;
+  steps?: any[];
+  metadata?: Record<string, any>;
+  constraints?: any;
+}
+
 // Form Schema Types
 export const FormFieldSchema = z.object({
   name: z.string(),
