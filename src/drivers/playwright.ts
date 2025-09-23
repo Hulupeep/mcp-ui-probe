@@ -11,6 +11,7 @@ export class PlaywrightDriver implements Driver {
   private consoleErrors: string[] = [];
   private networkErrors: any[] = [];
   private lastResponse: any = null;
+  private lastNavigationStatus: number = 200;
 
   async initialize(): Promise<void> {
     try {
@@ -101,6 +102,19 @@ export class PlaywrightDriver implements Driver {
 
     try {
       logger.info('Navigating to URL with response capture', { url });
+
+      // Set up response listener BEFORE navigation
+      let capturedStatus: number | null = null;
+      const responseHandler = (response: any) => {
+        // Capture the main frame navigation response
+        if (response.url() === url || response.url() === this.page!.url()) {
+          capturedStatus = response.status();
+          logger.info('Captured response status', { url: response.url(), status: capturedStatus });
+        }
+      };
+
+      this.page!.once('response', responseHandler);
+
       const response = await this.page!.goto(url, {
         waitUntil,
         timeout: 30000
@@ -110,13 +124,22 @@ export class PlaywrightDriver implements Driver {
       this.consoleErrors = [];
       this.networkErrors = [];
 
+      // Store the captured status
+      this.lastNavigationStatus = capturedStatus || (response ? response.status() : 200);
+
       logger.info('Navigation completed with response', {
         url,
         currentUrl: this.page!.url(),
-        status: response ? response.status() : null
+        status: this.lastNavigationStatus,
+        hadResponse: response !== null
       });
 
-      return response;
+      // Return a response-like object even if response is null
+      return response || {
+        status: () => this.lastNavigationStatus,
+        url: () => this.page!.url(),
+        ok: () => this.lastNavigationStatus < 400
+      };
     } catch (error) {
       logger.error('Navigation failed', { url, error });
       throw new NavigationError(`Failed to navigate to ${url}`, error);

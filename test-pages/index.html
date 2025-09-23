@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP UI Probe Test Suite</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test-section { border: 2px solid #ddd; padding: 20px; margin: 20px 0; }
+        button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; }
+        input, select { width: 100%; padding: 8px; }
+        .error { color: red; display: none; }
+        .custom-select { position: relative; }
+        .custom-select-trigger { padding: 10px; border: 1px solid #ccc; cursor: pointer; }
+        .custom-options { display: none; position: absolute; background: white; border: 1px solid #ccc; width: 100%; }
+        .custom-options.open { display: block; }
+        .custom-option { padding: 10px; cursor: pointer; }
+        .custom-option:hover { background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>MCP UI Probe Test Suite</h1>
+    <p>This page contains various test scenarios for the MCP UI Probe.</p>
+
+    <!-- Test Navigation Buttons -->
+    <div class="test-section">
+        <h2>Navigation Test Buttons</h2>
+        <button onclick="location.href='./success.html'">Go to Success Page</button>
+        <button onclick="location.href='./404.html'">Go to 404 Page</button>
+        <button onclick="location.href='./login.html'">Login</button>
+        <button onclick="location.href='./signup.html'">Sign Up</button>
+        <button id="demo-button" onclick="alert('Demo clicked!')">See Demo</button>
+    </div>
+
+    <!-- Simple Form -->
+    <div class="test-section">
+        <h2>Simple Login Form</h2>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required placeholder="user@example.com">
+                <span class="error" id="email-error">Invalid email format</span>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required minlength="8" placeholder="Min 8 characters">
+                <span class="error" id="password-error">Password must be at least 8 characters</span>
+            </div>
+            <button type="submit">Sign In</button>
+        </form>
+    </div>
+
+    <!-- Complex Form with Custom Components -->
+    <div class="test-section">
+        <h2>Complex Signup Form</h2>
+        <form id="signup-form">
+            <div class="form-group">
+                <label for="business-name">Business Name:</label>
+                <input type="text" id="business-name" name="businessName" required>
+            </div>
+
+            <!-- Standard Select -->
+            <div class="form-group">
+                <label for="country">Country (Standard Select):</label>
+                <select id="country" name="country" required>
+                    <option value="">Select Country</option>
+                    <option value="us">United States</option>
+                    <option value="uk">United Kingdom</option>
+                    <option value="ca">Canada</option>
+                </select>
+            </div>
+
+            <!-- Custom Dropdown -->
+            <div class="form-group">
+                <label>Business Type (Custom Dropdown):</label>
+                <div class="custom-select" id="business-type-select">
+                    <div class="custom-select-trigger" role="combobox" aria-expanded="false">Select Business Type</div>
+                    <div class="custom-options" role="listbox">
+                        <div class="custom-option" role="option" data-value="startup">Startup</div>
+                        <div class="custom-option" role="option" data-value="smb">Small Business</div>
+                        <div class="custom-option" role="option" data-value="enterprise">Enterprise</div>
+                    </div>
+                </div>
+                <input type="hidden" id="business-type" name="businessType">
+            </div>
+
+            <div class="form-group">
+                <label for="signup-email">Email:</label>
+                <input type="email" id="signup-email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="signup-password">Password:</label>
+                <input type="password" id="signup-password" name="password" required minlength="8">
+            </div>
+
+            <div class="form-group">
+                <label for="confirm-password">Confirm Password:</label>
+                <input type="password" id="confirm-password" name="confirmPassword" required minlength="8">
+            </div>
+
+            <button type="submit">Create Account</button>
+        </form>
+    </div>
+
+    <script>
+        // Simple form validation
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            let valid = true;
+
+            // Email validation
+            if (!email.includes('@') || !email.includes('.')) {
+                document.getElementById('email-error').style.display = 'block';
+                valid = false;
+            } else {
+                document.getElementById('email-error').style.display = 'none';
+            }
+
+            // Password validation
+            if (password.length < 8) {
+                document.getElementById('password-error').style.display = 'block';
+                valid = false;
+            } else {
+                document.getElementById('password-error').style.display = 'none';
+            }
+
+            if (valid) {
+                alert('Form submitted successfully!');
+            }
+        });
+
+        // Custom dropdown functionality
+        const customSelect = document.getElementById('business-type-select');
+        const trigger = customSelect.querySelector('.custom-select-trigger');
+        const options = customSelect.querySelector('.custom-options');
+        const hiddenInput = document.getElementById('business-type');
+
+        trigger.addEventListener('click', function() {
+            options.classList.toggle('open');
+            trigger.setAttribute('aria-expanded', options.classList.contains('open'));
+        });
+
+        customSelect.querySelectorAll('.custom-option').forEach(option => {
+            option.addEventListener('click', function() {
+                trigger.textContent = this.textContent;
+                hiddenInput.value = this.dataset.value;
+                options.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+            });
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!customSelect.contains(e.target)) {
+                options.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+            }
+        });
+    </script>
+</body>
+</html>
