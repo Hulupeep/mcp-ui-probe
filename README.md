@@ -8,6 +8,20 @@ Website testing is broken. You write hundreds of lines of code that breaks the m
 
 UI-Probe lets you test websites by describing what you want to do in plain English. No code. No selectors. Just describe it like you'd tell a human.
 
+## ⚡ Not the First, But a Different Take
+
+There are plenty of codeless/AI test tools already — people have wrapped LLMs on top of Playwright, Selenium, or built full SaaS products like Testim, Mabl, and Rainforest. I've tried a bunch. They either felt too heavy, too enterprise, or still broke when the DOM shifted.
+
+UI-Probe is my wedge: **Claude/MCP-native**, **beginner-friendly**, and **open-source**. I wanted something I could spin up in minutes, hand to a PM or designer with no coding background, and still trust it to run the flow like a human would. That's what I built.
+
+### What Makes UI-Probe Different
+
+- **Built-in test playground** - Test pages included to try before deploying to your project
+- **Real-time monitoring** - Watch tests run with live feedback
+- **Claude-native** - Designed specifically for Claude Code CLI, not retrofitted
+- **Actually works for non-devs** - PMs, designers, QA can use it immediately
+- **Open source** - No vendor lock-in, customize as needed
+
 ```bash
 # Instead of this nightmare:
 await driver.findElement(By.xpath("//div[@id='login-form']//input[@name='email']")).sendKeys("test@example.com");
