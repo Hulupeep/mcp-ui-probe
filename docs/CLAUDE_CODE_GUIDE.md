@@ -190,7 +190,8 @@ file:///path/to/file.html       # Local file paths
 ### 1. Start the MCP Server
 
 ```bash
-# In your project directory
+# Navigate to where you cloned mcp-ui-probe
+cd ~/mcp-ui-probe  # or your clone location
 npm start
 
 # Server runs on port 3000
@@ -206,7 +207,7 @@ Create `.claude/mcp_settings.json` in your project:
   "servers": {
     "ui-tester": {
       "command": "node",
-      "args": ["./node_modules/mcp-ui-probe/dist/index.js"],
+      "args": ["/absolute/path/to/mcp-ui-probe/dist/index.js"],
       "env": {
         "MCP_PORT": "3000"
       }
@@ -214,6 +215,8 @@ Create `.claude/mcp_settings.json` in your project:
   }
 }
 ```
+
+**IMPORTANT**: Replace `/absolute/path/to/mcp-ui-probe` with the actual path where you cloned the repository!
 
 ### 3. Use in Claude Code CLI
 

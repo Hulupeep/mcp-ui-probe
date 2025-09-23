@@ -36,25 +36,20 @@ Before starting, make sure you have:
 
 ### Step 2: Install MCP UI Probe
 
-#### Option A: Quick Install (Recommended)
+**IMPORTANT**: This is NOT on npm yet. You must clone from GitHub.
 
 ```bash
-# Clone and setup in one command
+# Clone the repository (do this OUTSIDE your project folder)
+cd ~  # or wherever you keep tools
 git clone https://github.com/Hulupeep/mcp-ui-probe.git
 cd mcp-ui-probe
+
+# Install dependencies and build
 npm install
 npm run build
 ```
 
-#### Option B: Install as Package
-
-```bash
-# In your project directory
-npm install mcp-ui-probe
-
-# Or globally
-npm install -g mcp-ui-probe
-```
+**DO NOT** run `npm init` in your existing project - that will mess up your package.json!
 
 ### Step 3: Start the Testing Server
 
@@ -90,12 +85,7 @@ Create or update `.claude/mcp_settings.json` in your project:
 }
 ```
 
-Or use the automatic setup:
-
-```bash
-# In the mcp-ui-probe directory
-npm run setup-claude
-```
+**Note**: The automatic setup command is planned but not yet implemented.
 
 ### Step 5: Verify Everything Works
 

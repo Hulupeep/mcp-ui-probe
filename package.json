@@ -15,7 +15,8 @@
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "monitoring": "tsx src/monitoring/server.ts",
-    "start:monitoring": "node dist/monitoring/server.js"
+    "start:monitoring": "node dist/monitoring/server.js",
+    "setup-claude": "echo 'Setup script not yet implemented - please configure manually'"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",

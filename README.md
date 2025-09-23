@@ -52,23 +52,20 @@ claude "Test signup"  # AI responds: "Where? What URL?"
 
 ### 1️⃣ Install MCP UI Probe
 
-Open your terminal (Command Prompt on Windows, Terminal on Mac) and run:
+**IMPORTANT**: This is NOT on npm yet. You must clone from GitHub.
 
 ```bash
-# Create a new folder for your tests
-mkdir my-ui-tests
-cd my-ui-tests
-
-# Install MCP UI Probe
-npm init -y
-npm install mcp-ui-probe
-
-# Or clone this repository
+# Clone the repository (do this OUTSIDE your project folder)
+cd ~  # or wherever you keep tools
 git clone https://github.com/Hulupeep/mcp-ui-probe.git
 cd mcp-ui-probe
+
+# Install dependencies and build
 npm install
 npm run build
 ```
+
+**DO NOT** run `npm init` in your existing project - that will mess up your package.json!
 
 ### 2️⃣ Start the Testing Server
 
