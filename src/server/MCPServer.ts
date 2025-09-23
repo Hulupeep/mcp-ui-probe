@@ -21,6 +21,7 @@ import {
   TestRun
 } from '../types/index.js';
 import { MCPUIError, NavigationError, FormInferenceError } from '../utils/errors.js';
+import { verifyPage, VerifyPageParams } from '../tools/verify_page.js';
 import logger from '../utils/logger.js';
 
 export class MCPServer {
@@ -167,6 +168,33 @@ export class MCPServer {
             },
           },
           {
+            name: 'verify_page',
+            description: 'Verify page content and check for 404/error pages',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                expectedContent: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Text that should be present on the page',
+                },
+                unexpectedContent: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: 'Text that should NOT be present (e.g., "404", "Error")',
+                },
+                expectedTitle: {
+                  type: 'string',
+                  description: 'Expected page title (partial match)',
+                },
+                expectedUrl: {
+                  type: 'string',
+                  description: 'Expected URL pattern',
+                },
+              },
+            },
+          },
+          {
             name: 'collect_errors',
             description: 'Collect errors from console, network, and validation',
             inputSchema: {
@@ -236,6 +264,10 @@ export class MCPServer {
             result = await this.handleRunFlow(args as any);
             break;
 
+          case 'verify_page':
+            result = await this.handleVerifyPage(args as any);
+            break;
+
           case 'assert_selectors':
             result = await this.handleAssertSelectors(args as any);
             break;
@@ -288,15 +320,39 @@ export class MCPServer {
       const page = await this.driver.getPage();
       const currentUrl = page.url();
 
+      // Check for 404 indicators in the page content
+      const pageTitle = await page.title();
+      const pageContent = await page.content();
+
+      // Common 404 indicators
+      const is404 = (
+        pageTitle.toLowerCase().includes('404') ||
+        pageTitle.toLowerCase().includes('not found') ||
+        pageContent.includes('404') && (
+          pageContent.includes('Page Not Found') ||
+          pageContent.includes('page not found') ||
+          pageContent.includes('The page you are looking for') ||
+          pageContent.includes('could not be found') ||
+          pageContent.includes('doesn\'t exist') ||
+          pageContent.includes('Error 404')
+        )
+      );
+
+      // Check if URL changed (redirected to 404 page)
+      const urlChanged = currentUrl !== params.url && currentUrl.includes('404');
+
       return {
-        success: true,
+        success: !is404,
         data: {
-          ok: true,
+          ok: !is404,
           currentUrl,
+          pageTitle,
+          is404Page: is404 || urlChanged,
+          warning: is404 ? 'Page appears to be a 404 error page' : undefined,
         },
       };
     } catch (error) {
-      throw new NavigationError('Navigation failed', error);
+      throw new NavigationError('Navigation failed', error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -309,7 +365,7 @@ export class MCPServer {
         data: analysis,
       };
     } catch (error) {
-      throw new NavigationError('UI analysis failed', error);
+      throw new NavigationError('UI analysis failed', error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -326,7 +382,7 @@ export class MCPServer {
         data: inference,
       };
     } catch (error) {
-      throw new FormInferenceError('Form inference failed', error);
+      throw new FormInferenceError('Form inference failed', error instanceof Error ? error : new Error(String(error)));
     }
   }
 
@@ -556,6 +612,24 @@ export class MCPServer {
     }
 
     return errors;
+  }
+
+  private async handleVerifyPage(params: VerifyPageParams): Promise<MCPToolResult> {
+    try {
+      const page = await this.driver.getPage();
+      const result = await verifyPage(page, params);
+
+      return {
+        success: result.success,
+        data: result,
+      };
+    } catch (error) {
+      throw new MCPUIError(
+        'Page verification failed',
+        'E_VERIFY_FAILED',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
   }
 
   private async handleExportReport(params: ExportReportParams): Promise<MCPToolResult> {
