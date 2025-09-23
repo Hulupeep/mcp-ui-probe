@@ -41,6 +41,8 @@ claude "Test signup"  # AI responds: "Where? What URL?"
 ✅ **What You Need:**
 - Node.js 18 or higher ([Download here](https://nodejs.org))
 - A website to test (must be running and accessible via URL)
+- Playwright browsers installed (automatic during setup)
+- System dependencies for browsers (installed with sudo)
 - 5 minutes to set up
 
 ❌ **What You DON'T Need:**
@@ -63,6 +65,14 @@ cd mcp-ui-probe
 # Install dependencies and build
 npm install
 npm run build
+
+# CRITICAL: Install Playwright browsers (required for UI testing!)
+npx playwright install
+
+# Install system dependencies (requires sudo)
+sudo apt-get install libgstreamer-plugins-bad1.0-0 libavif16
+# OR use Playwright's installer:
+sudo npx playwright install-deps
 ```
 
 **DO NOT** run `npm init` in your existing project - that will mess up your package.json!
@@ -74,8 +84,7 @@ npm run build
 npm start
 
 # You should see:
-# ✅ MCP UI Testing Server running on port 3000
-# ✅ Monitoring dashboard available at http://localhost:3001
+# ✅ MCP UI Testing Server started
 ```
 
 ### 3️⃣ Verify It's Working
@@ -90,7 +99,7 @@ curl http://localhost:3000/health
 # {"status": "healthy", "version": "0.1.0"}
 ```
 
-Or open your browser and go to: `http://localhost:3001` to see the monitoring dashboard.
+The MCP server is now ready to receive test commands.
 
 ## How to Use It - Real Examples
 
@@ -397,7 +406,7 @@ quickTest("Sign up on google.com");
 node quick-test.js
 ```
 
-4. **Watch the magic happen** at `http://localhost:3001` 🎉
+4. **Watch the magic happen** 🎉
 
 ---
 

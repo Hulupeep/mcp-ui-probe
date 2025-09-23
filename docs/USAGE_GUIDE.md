@@ -4,13 +4,28 @@
 
 ### Installation
 
-```bash
-# Install the MCP UI Probe
-npm install -g mcp-ui-probe
+**IMPORTANT**: This package is NOT on npm yet. You must clone from GitHub.
 
-# Or use with Claude Code
-claude mcp add ui-probe mcp-ui-probe
+```bash
+# Clone the repository
+git clone https://github.com/Hulupeep/mcp-ui-probe.git
+cd mcp-ui-probe
+
+# Install and build
+npm install
+npm run build
+
+# CRITICAL: Install Playwright browsers (470MB) - REQUIRED!
+npx playwright install
+
+# Install system dependencies (requires sudo)
+sudo npx playwright install-deps
+
+# Add to Claude Code
+claude mcp add --scope project ui-probe node /path/to/mcp-ui-probe/dist/index.js
 ```
+
+⚠️ **WARNING**: Without `npx playwright install`, ALL tests will fail with "Navigation failed" errors!
 
 ### Basic Usage
 

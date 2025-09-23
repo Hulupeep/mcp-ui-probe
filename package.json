@@ -8,6 +8,8 @@
     "build": "tsc",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
+    "postinstall": "npx playwright install",
+    "setup": "npm install && npm run build && npx playwright install",
     "test": "jest",
     "test:unit": "jest --testPathPattern=tests/unit",
     "test:integration": "jest --testPathPattern=tests/integration",
@@ -16,7 +18,9 @@
     "typecheck": "tsc --noEmit",
     "monitoring": "tsx src/monitoring/server.ts",
     "start:monitoring": "node dist/monitoring/server.js",
-    "setup-claude": "echo 'Setup script not yet implemented - please configure manually'"
+    "setup-claude": "echo 'Setup script not yet implemented - please configure manually'",
+    "setup:browsers": "npx playwright install",
+    "setup:deps": "echo 'Run: sudo apt-get install libgstreamer-plugins-bad1.0-0 libavif16'"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",

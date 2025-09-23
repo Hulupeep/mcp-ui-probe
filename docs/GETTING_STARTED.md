@@ -47,9 +47,19 @@ cd mcp-ui-probe
 # Install dependencies and build
 npm install
 npm run build
+
+# CRITICAL STEP: Install Playwright browsers (470MB)
+npx playwright install
+
+# Install system dependencies (requires sudo)
+sudo npx playwright install-deps
+# OR manually:
+sudo apt-get install libgstreamer-plugins-bad1.0-0 libavif16
 ```
 
 **DO NOT** run `npm init` in your existing project - that will mess up your package.json!
+
+⚠️ **IMPORTANT**: The `npx playwright install` step is REQUIRED! Without it, all UI tests will fail with "Navigation failed" errors.
 
 ### Step 3: Start the Testing Server
 

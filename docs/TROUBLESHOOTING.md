@@ -1,5 +1,51 @@
 # Troubleshooting Guide
 
+## 🔴 CRITICAL: Browser Installation Issues
+
+### "Navigation failed" or "Browser launch failed"
+
+**This is the #1 issue - Playwright browsers are not installed!**
+
+**Symptoms:**
+- All UI tests fail immediately
+- Error: "Navigation failed"
+- Error: "browserType.launch: Executable doesn't exist"
+- Error: "Could not launch browser"
+
+**Solution:**
+```bash
+# Step 1: Install Playwright browsers (470MB)
+cd /path/to/mcp-ui-probe
+npx playwright install
+
+# Step 2: Install system dependencies (requires sudo)
+sudo npx playwright install-deps
+# OR manually:
+sudo apt-get install libgstreamer-plugins-bad1.0-0 libavif16
+```
+
+**Verify Installation:**
+```bash
+# Check browsers are installed
+ls ~/.cache/ms-playwright/
+# Should show: chromium-1187, firefox-1490, webkit-2203, ffmpeg-1011
+
+# Test browser launch
+npx playwright test --list
+```
+
+### Host system missing dependencies
+
+**Symptoms:**
+- Warning: "Host system is missing dependencies to run browsers"
+- Browsers crash on launch
+- Segmentation faults
+
+**Solution:**
+```bash
+sudo npx playwright install-deps
+```
+
 ## Common Issues and Solutions
 
 ### 1. Form Detection Problems
