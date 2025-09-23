@@ -46,7 +46,7 @@ npm init -y
 npm install mcp-ui-probe
 
 # Or clone this repository
-git clone https://github.com/your-org/mcp-ui-probe.git
+git clone https://github.com/Hulupeep/mcp-ui-probe.git
 cd mcp-ui-probe
 npm install
 npm run build
@@ -354,7 +354,7 @@ await tester.test({
 - [Examples](examples/) - Ready-to-run test examples
 
 ### 💬 Support
-- GitHub Issues: [Report problems](https://github.com/your-org/mcp-ui-probe/issues)
+- GitHub Issues: [Report problems](https://github.com/Hulupeep/mcp-ui-probe/issues)
 - Discord: [Join our community](https://discord.gg/mcp-ui-probe)
 - Email: support@example.com
 

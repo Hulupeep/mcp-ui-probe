@@ -49,6 +49,10 @@
     "webdriver",
     "appium"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hulupeep/mcp-ui-probe.git"
+  },
   "author": "",
   "license": "MIT"
 }

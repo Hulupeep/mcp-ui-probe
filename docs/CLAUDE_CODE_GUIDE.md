@@ -1,5 +1,7 @@
 # Claude Code CLI Guide for MCP UI Probe
 
+Repository: https://github.com/Hulupeep/mcp-ui-probe
+
 ## How It Works with URLs
 
 **IMPORTANT**: The AI doesn't guess URLs. You must always provide:

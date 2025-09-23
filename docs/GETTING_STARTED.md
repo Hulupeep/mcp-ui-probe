@@ -50,7 +50,7 @@ mkdir mcp-ui-probe
 cd mcp-ui-probe
 
 # 2. Clone the repository
-git clone https://github.com/your-org/mcp-ui-probe.git .
+git clone https://github.com/Hulupeep/mcp-ui-probe.git .
 
 # 3. Install dependencies
 npm install
