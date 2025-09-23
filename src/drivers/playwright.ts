@@ -188,12 +188,19 @@ export class PlaywrightDriver implements Driver {
         };
 
         // Analyze forms
-        document.querySelectorAll('form').forEach((form, index) => {
-          const fields = Array.from(form.querySelectorAll('input, select, textarea')).map(input => {
+        document.querySelectorAll('form').forEach((form, formIndex) => {
+          const fields = Array.from(form.querySelectorAll('input, select, textarea')).map((input, fieldIndex) => {
             const inputElement = input as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
 
+            // Generate unique field name based on various attributes
+            const fieldName = inputElement.name ||
+                            inputElement.id ||
+                            inputElement.getAttribute('aria-label') ||
+                            inputElement.getAttribute('placeholder')?.toLowerCase().replace(/\s+/g, '_') ||
+                            `${inputElement.type || 'field'}_${formIndex}_${fieldIndex}`;
+
             return {
-              name: inputElement.name || inputElement.id || `field_${index}`,
+              name: fieldName,
               type: inputElement.type || 'text',
               selector: generateSelector(inputElement),
               required: inputElement.hasAttribute('required'),
@@ -225,7 +232,7 @@ export class PlaywrightDriver implements Driver {
                               form.querySelector('button:not([type])');
 
           forms.push({
-            name: form.getAttribute('name') || form.id || `form_${index}`,
+            name: form.getAttribute('name') || form.id || `form_${formIndex}`,
             selector: generateSelector(form),
             fields,
             submit: {

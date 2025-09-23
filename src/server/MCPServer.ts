@@ -144,6 +144,27 @@ export class MCPServer {
             },
           },
           {
+            name: 'click_button',
+            description: 'Click a button or link on the page',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                text: {
+                  type: 'string',
+                  description: 'Button text to click (exact or partial match)',
+                },
+                selector: {
+                  type: 'string',
+                  description: 'CSS selector for the button (optional, used if text not provided)',
+                },
+                waitForNavigation: {
+                  type: 'boolean',
+                  description: 'Wait for navigation after click (default: true)',
+                },
+              },
+            },
+          },
+          {
             name: 'assert_selectors',
             description: 'Assert presence and properties of page elements',
             inputSchema: {
@@ -274,6 +295,10 @@ export class MCPServer {
 
           case 'collect_errors':
             result = await this.handleCollectErrors(args as any);
+            break;
+
+          case 'click_button':
+            result = await this.handleClickButton(args as any);
             break;
 
           case 'export_report':
@@ -428,29 +453,170 @@ export class MCPServer {
     }
   }
 
-  private async handleRunFlow(params: RunFlowParams): Promise<MCPToolResult> {
+  private async handleClickButton(params: any): Promise<MCPToolResult> {
     try {
-      // Navigate if URL provided
-      if (params.url) {
-        await this.driver.navigate(params.url);
+      const page = await this.driver.getPage();
+      let buttonClicked = false;
+      let selector = '';
+
+      if (params.text) {
+        // Try multiple selector patterns for button text
+        const buttonSelectors = [
+          `button:has-text("${params.text}")`,
+          `[role="button"]:has-text("${params.text}")`,
+          `a:has-text("${params.text}")`,
+          `input[type="button"][value="${params.text}"]`,
+          `input[type="submit"][value="${params.text}"]`,
+          `*:has-text("${params.text}"):is(button, [role="button"], a)`,
+        ];
+
+        for (const sel of buttonSelectors) {
+          try {
+            const element = page.locator(sel).first();
+            if (await element.isVisible({ timeout: 1000 })) {
+              selector = sel;
+              if (params.waitForNavigation !== false) {
+                await Promise.all([
+                  page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => null),
+                  element.click()
+                ]);
+              } else {
+                await element.click();
+              }
+              buttonClicked = true;
+              break;
+            }
+          } catch (e) {
+            // Continue to next selector
+          }
+        }
+      } else if (params.selector) {
+        const element = page.locator(params.selector).first();
+        if (await element.isVisible({ timeout: 1000 })) {
+          selector = params.selector;
+          if (params.waitForNavigation !== false) {
+            await Promise.all([
+              page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => null),
+              element.click()
+            ]);
+          } else {
+            await element.click();
+          }
+          buttonClicked = true;
+        }
       }
 
-      // Analyze UI
-      const analysis = await this.driver.snapshot();
+      if (!buttonClicked) {
+        throw new MCPUIError(
+          `Button not found: ${params.text || params.selector}`,
+          'E_BUTTON_NOT_FOUND',
+          { text: params.text, selector: params.selector }
+        );
+      }
 
-      // Infer form
+      return {
+        success: true,
+        data: {
+          clicked: true,
+          selector,
+          currentUrl: page.url(),
+          pageTitle: await page.title(),
+        },
+      };
+    } catch (error) {
+      throw new MCPUIError(
+        'Click button failed',
+        'E_CLICK_FAILED',
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
+  private async handleRunFlow(params: RunFlowParams): Promise<MCPToolResult> {
+    const errors: any[] = [];
+    const steps: any[] = [];
+
+    try {
+      // Step 1: Navigate if URL provided
+      if (params.url) {
+        steps.push({ step: 'navigate', status: 'starting' });
+        const navResult = await this.handleNavigate({ url: params.url });
+        if (!navResult.success) {
+          errors.push({
+            step: 'navigate',
+            error: 'Navigation failed - page might be 404',
+            details: navResult.data
+          });
+        }
+        steps.push({ step: 'navigate', status: 'completed', url: params.url });
+      }
+
+      // Step 2: Analyze UI
+      steps.push({ step: 'analyze', status: 'starting' });
+      const analysis = await this.driver.snapshot();
+      steps.push({
+        step: 'analyze',
+        status: 'completed',
+        found: {
+          forms: analysis.forms.length,
+          buttons: analysis.buttons.length,
+          inputs: analysis.inputs.length
+        }
+      });
+
+      // Step 3: Check if this is a button click goal
+      const isButtonGoal = params.goal.toLowerCase().includes('click') ||
+                          params.goal.toLowerCase().includes('button') ||
+                          params.goal.toLowerCase().includes('link');
+
+      if (isButtonGoal) {
+        // Extract button text from goal
+        const buttonMatch = params.goal.match(/["']([^"']+)["']/) ||
+                           params.goal.match(/(?:click|press)\s+(?:the\s+)?([\w\s]+?)(?:\s+button|\s+link|$)/i);
+
+        if (buttonMatch) {
+          const buttonText = buttonMatch[1];
+          steps.push({ step: 'click_button', status: 'starting', target: buttonText });
+
+          const clickResult = await this.handleClickButton({ text: buttonText });
+          steps.push({ step: 'click_button', status: 'completed', result: clickResult.data });
+
+          return {
+            success: true,
+            data: {
+              goal: params.goal,
+              steps,
+              result: 'completed',
+              clickResult: clickResult.data
+            }
+          };
+        }
+      }
+
+      // Step 4: Form-based flow
+      steps.push({ step: 'infer_form', status: 'starting' });
       const inference = await formInferenceEngine.inferForm(analysis, {
         goal: params.goal,
       });
 
       if (inference.confidence < 0.3) {
-        logger.warn('Low confidence form inference', {
-          goal: params.goal,
+        errors.push({
+          step: 'infer_form',
+          error: 'Low confidence form inference',
           confidence: inference.confidence,
+          goal: params.goal,
+          availableForms: analysis.forms.length
         });
       }
+      steps.push({
+        step: 'infer_form',
+        status: 'completed',
+        confidence: inference.confidence,
+        fields: inference.formSchema.fields.length
+      });
 
-      // Execute flow
+      // Step 5: Execute flow
+      steps.push({ step: 'execute', status: 'starting' });
       const page = await this.driver.getPage();
       const testRun = await flowEngine.executeFlow(
         page,
@@ -461,12 +627,29 @@ export class MCPServer {
       // Store test run
       this.testRuns.set(testRun.runId, testRun);
 
+      steps.push({ step: 'execute', status: 'completed', runId: testRun.runId });
+
       return {
         success: true,
-        data: testRun,
+        data: {
+          ...testRun,
+          steps,
+          errors
+        },
       };
     } catch (error) {
-      throw new MCPUIError('Flow execution failed', 'E_FLOW_EXECUTION', error);
+      const errorDetails = {
+        message: error instanceof Error ? error.message : String(error),
+        steps,
+        errors,
+        lastStep: steps[steps.length - 1]
+      };
+
+      throw new MCPUIError(
+        `Flow execution failed at step: ${errorDetails.lastStep?.step || 'unknown'}. ${errorDetails.message}`,
+        'E_FLOW_EXECUTION',
+        errorDetails
+      );
     }
   }
 

@@ -129,7 +129,8 @@ export const UIAnalysisResult = z.object({
 
 // Driver Types
 export interface Driver {
-  navigate(url: string): Promise<void>;
+  navigate(url: string, waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'): Promise<void>;
+  navigateWithResponse(url: string, waitUntil?: 'load' | 'domcontentloaded' | 'networkidle'): Promise<any>;
   getPage(): Promise<any>;
   snapshot(): Promise<UIAnalysis>;
   takeScreenshot(): Promise<string>;
