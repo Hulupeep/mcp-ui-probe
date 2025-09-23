@@ -1,353 +1,326 @@
-# UI-Probe: Test Websites Using Plain English 🤖
+# UI-Probe: Test Any Website in Plain English
 
-## What Problem Does This Solve?
+## The Problem
 
-### The Old Way (Painful) 😫
-Writing web tests traditionally requires:
-- Learning complex testing frameworks (Selenium, Cypress, Playwright)
-- Writing code with specific element selectors that break constantly
-- Maintaining hundreds of lines of brittle test code
-- Updating tests every time a button moves or a class name changes
+Website testing is broken. You write hundreds of lines of code that breaks the moment a developer changes a button class from `btn-primary` to `button-primary`. Your tests fail not because the app is broken, but because someone moved a div or renamed an ID.
 
-```javascript
-// Traditional test - breaks when ANY selector changes
-await driver.findElement(By.xpath("//div[@class='form-container-v2']//input[@id='email-field-2024']")).sendKeys("test@example.com");
-await driver.findElement(By.css(".btn-primary-new.submit-button")).click();
-// 😱 This breaks the moment developers change 'btn-primary-new' to 'btn-primary-v3'
-```
+## The Solution
 
-### The New Way (UI-Probe) ✨
-Just describe what you want to test in plain English:
+UI-Probe lets you test websites by describing what you want to do in plain English. No code. No selectors. Just describe it like you'd tell a human.
 
 ```bash
-# In Claude Code CLI - that's it!
-run_flow "Go to https://myapp.com/signup and create an account"
+# Instead of this nightmare:
+await driver.findElement(By.xpath("//div[@id='login-form']//input[@name='email']")).sendKeys("test@example.com");
+await driver.findElement(By.css(".btn-submit.primary")).click();
+
+# Just say this:
+run_flow "Sign up for an account"
 ```
 
-UI-Probe understands your intent and adapts to UI changes automatically. When buttons move, classes change, or layouts update - your tests keep working!
+## For Complete Beginners
 
-## Why Use UI-Probe?
+Never written code? Perfect! UI-Probe is designed for you:
 
-### For Non-Technical Users 👨‍💼👩‍💼
-- **No coding required** - Write tests in plain English
-- **No setup hassle** - Works out of the box
-- **Clear results** - Understand exactly what passed or failed
-- **Visual feedback** - See what the test is doing in real-time
+1. **Install it** (one-time setup, 5 minutes)
+2. **Tell it what to test** in plain English
+3. **Get clear results** - "✅ Account created" or "❌ The signup button is hidden"
 
-### For Developers 👩‍💻👨‍💻
-- **Self-healing tests** - Automatically adapt to UI changes
-- **80% less test code** - One line replaces dozens
-- **Intelligent form filling** - Generates context-aware test data
-- **AI-powered understanding** - Uses GPT-4/Claude for natural language processing
-- **Real browser testing** - Uses Playwright under the hood
+### Example for Non-Developers
 
-### Real Benefits 📊
-- **5x faster test creation** - Minutes instead of hours
-- **90% fewer test failures** - No more broken selectors
-- **Clear error messages** - "The login button is hidden" vs "ElementNotInteractableException"
-- **Automatic test data** - Generates valid emails, passwords, phone numbers
+Want to test your website's contact form every day? Just type:
 
-## Quick Start (5 Minutes) 🚀
+```bash
+# In Claude, you can be natural:
+"Test the contact form on my homepage"
+
+# Claude figures out the URL from context, or you can be explicit:
+fill_form "https://mysite.com/contact" {"message": "Testing!"}
+```
+
+That's it. No programming required.
+
+## For Developers
+
+UI-Probe gives you:
+- **Self-healing tests** - Automatically adapts when UI changes
+- **80% less code** - One line instead of dozens
+- **AI-powered intelligence** - Uses GPT-4/Claude to understand pages
+- **Clear error messages** - "Button is hidden by cookie banner" vs "ElementNotInteractableException"
+
+## Quick Start (5 Minutes)
 
 ### Prerequisites
-- Node.js 18+ ([Download](https://nodejs.org))
-- Git
-- Claude Code CLI installed
+- Node.js 18+ ([Download](https://nodejs.org) - just click "Next" through installer)
+- Claude Code CLI or any terminal
 
-### Step 1: Clone and Install
+### Step 1: Install UI-Probe
 
 ```bash
-# Clone the repository
+# Clone it (this downloads the code)
 git clone https://github.com/yourusername/mcp-ui-probe.git
 cd mcp-ui-probe
 
-# Install dependencies
+# Install it (this sets everything up)
 npm install
 
-# CRITICAL: Install browser automation (470MB, one-time)
+# CRITICAL: Install browsers (one-time, takes 2-3 minutes)
 npx playwright install
 ```
 
-### Step 2: Add to Claude Code CLI
+### Step 2: Add to Claude
 
 ```bash
-# From your project directory where you want to test
-claude mcp add ui-probe "node" "/absolute/path/to/mcp-ui-probe/dist/index.js"
+# Tell Claude about UI-Probe
+claude mcp add ui-probe "node" "/path/to/mcp-ui-probe/dist/index.js"
 
-# Restart Claude Code to load the tools
-# Exit and restart your Claude Code session
+# Restart Claude to load it
 ```
 
-### Step 3: Enable AI (Recommended)
+### Step 3: Enable AI (Optional but Recommended)
 
 ```bash
-# In the mcp-ui-probe directory, create .env file
-echo "OPENAI_API_KEY=your-openai-api-key" > .env
-
-# This enables:
-# - Natural language understanding
-# - Smart error messages
-# - Intelligent form filling
+# In the mcp-ui-probe folder
+echo "OPENAI_API_KEY=your-key-here" > .env
 ```
 
-### Step 4: Test It Works!
+This makes UI-Probe smarter at understanding your commands.
 
-In Claude Code CLI:
+### Step 4: Test Something!
+
 ```bash
-# Analyze any website
-analyze_ui "https://example.com"
+# In Claude, just describe what you want:
+"Test if users can sign up on example.com"
 
-# You should see a detailed breakdown of all interactive elements!
+# Or be specific:
+run_flow "Go to https://example.com/signup and create an account"
 ```
 
-## How to Use UI-Probe 📝
+## How URLs Work in Claude
 
-### Basic Testing in Claude Code CLI
+Claude is smart about URLs:
 
-#### 1. Navigate and Analyze
 ```bash
-# Navigate to a page
-navigate "https://myapp.com"
+# Natural language - Claude figures it out:
+"Test the login on my homepage"
+"Check if the contact form works"
+"Sign up for a new account"
 
-# Analyze what's on the page
-analyze_ui "https://myapp.com"
-# Returns: forms, buttons, links, inputs with smart names
+# Explicit - when you need a specific URL:
+navigate "https://staging.myapp.com/login"
+fill_form "https://myapp.com/contact" {"message": "Hi!"}
 ```
 
-#### 2. Test a Complete Flow
+**Tip:** Start natural. If Claude asks "What URL?", then be specific.
+
+## Common Tasks
+
+### Test a Login Form
 ```bash
-# One command to test an entire user journey
-run_flow "Go to https://myapp.com/signup, create an account with email test@example.com, and verify success"
+# Natural way:
+"Test if users can log in"
+
+# Explicit way:
+run_flow "Go to https://myapp.com/login, enter test@example.com and password123, click login"
 ```
 
-#### 3. Fill Forms Intelligently
+### Test a Purchase
 ```bash
-# UI-Probe figures out all fields automatically
-fill_form "https://myapp.com/contact" {"subject": "Test inquiry"}
-# It fills: name, email, phone, message - you only override what you need!
+# Natural:
+"Buy a blue shirt from the shop"
+
+# Explicit:
+run_flow "Go to https://shop.com, search for blue shirt, add first result to cart, checkout with test card 4111111111111111"
 ```
 
-#### 4. Test with Validation
+### Test Form Validation
 ```bash
-# Verify elements and content
-assert_element "https://myapp.com/dashboard" "Welcome back" "visible"
+# Test what happens with bad data:
+fill_form "https://myapp.com/signup" {"email": "not-an-email"}
+# UI-Probe tells you: "❌ Email validation error appeared"
 ```
 
-### Real-World Examples 🌍
-
-#### E-Commerce Purchase Test
+### Check if Something Exists
 ```bash
-run_flow "Go to https://shop.com, search for 'blue shirt', add the first result to cart, proceed to checkout as guest, and complete purchase"
+assert_element "https://myapp.com" "Free shipping" "visible"
+# Returns: "✅ Found 'Free shipping' on page"
 ```
 
-UI-Probe automatically:
-- Navigates to the shop
-- Finds and uses the search box
-- Identifies product listings
-- Clicks add to cart
-- Fills guest checkout forms
-- Completes the purchase
+## What Makes UI-Probe Different
 
-#### Form Validation Testing
+### Traditional Testing Tools
+- Write code with specific selectors
+- Tests break when UI changes
+- Cryptic error messages
+- Need programming knowledge
+- Hundreds of lines of code
+
+### UI-Probe
+- Describe in plain English
+- Self-healing when UI changes
+- Clear, human-friendly errors
+- No programming needed
+- One line does it all
+
+## Real-World Examples
+
+### E-commerce Site
 ```bash
-# Test that your form properly validates input
-fill_form "https://myapp.com/register" {"email": "not-an-email", "password": "123"}
-# UI-Probe reports validation errors clearly
+# Complete purchase flow
+"Buy the cheapest laptop on the site"
+
+# UI-Probe automatically:
+# - Finds the shop
+# - Searches for laptops
+# - Sorts by price
+# - Adds to cart
+# - Fills checkout
+# - Completes purchase
 ```
 
-#### Multi-Step Process
+### SaaS Application
 ```bash
-run_flow "Complete the job application at https://careers.com/apply including uploading a resume"
+# Test free trial signup
+"Sign up for a free trial with a company email"
+
+# UI-Probe:
+# - Navigates to signup
+# - Detects it's a business form
+# - Fills company fields
+# - Uses appropriate test data
+# - Verifies trial activated
 ```
 
-## Testing UI-Probe Itself 🧪
+### Banking App
+```bash
+# Test money transfer
+"Transfer $50 from checking to savings"
 
-### Run the Built-in Test Suite
+# UI-Probe:
+# - Logs in securely
+# - Navigates to transfers
+# - Fills amount
+# - Selects accounts
+# - Confirms transfer
+```
+
+## Built-in Test Pages
+
+UI-Probe includes test pages to try:
 
 ```bash
-# Terminal 1: Start test server with demo pages
-cd mcp-ui-probe
+# Start test server
 npm run test:server
 
-# Terminal 2: Run the test suite
-npm test
-
-# Terminal 3: Use Claude Code to test the test pages
+# Then test it:
 analyze_ui "http://localhost:8080/test/forms"
-fill_form "http://localhost:8080/test/forms" {"custom_field": "test"}
+fill_form "http://localhost:8080/test/forms" {"name": "Test User"}
 ```
 
-### Test Pages Included
-- `http://localhost:8080/test/forms` - Various form types
-- `http://localhost:8080/test/navigation` - Links and buttons
-- `http://localhost:8080/test/dynamic` - JavaScript-heavy pages
-- `http://localhost:8080/test/validation` - Form validation scenarios
+Test pages include:
+- Forms with every input type
+- Dynamic JavaScript content
+- Validation scenarios
+- Navigation examples
 
-## Configuration ⚙️
+## Configuration
 
-### Environment Variables (.env file)
+### Basic (.env file)
 ```bash
-# AI Configuration (Recommended)
-OPENAI_API_KEY=sk-...       # For GPT-4 powered understanding
-ANTHROPIC_API_KEY=sk-ant-... # Alternative: Claude API
+# Make UI-Probe smarter
+OPENAI_API_KEY=sk-...
 
-# Server Configuration
-PORT=3001                    # MCP server port
-DEBUG=true                   # Detailed logging
-HEADLESS=false              # Show browser window
-TIMEOUT=30000               # Default timeout (ms)
+# See the browser window
+HEADLESS=false
 
-# Advanced
-CACHE_TTL=300000            # Cache API responses (5 min)
-MAX_RETRIES=3               # Retry failed operations
+# Show detailed logs
+DEBUG=true
 ```
 
-## Understanding How It Works 🧠
-
-### The Magic Behind UI-Probe
-
-1. **Natural Language Processing**
-   - Your command: "Sign up for an account"
-   - AI understands: "Find registration form, fill it, submit"
-
-2. **Intelligent Page Analysis**
-   - Scans the page for interactive elements
-   - Identifies forms, buttons, inputs automatically
-   - Names fields based on context (labels, placeholders, etc.)
-
-3. **Smart Data Generation**
-   - Email fields → `test1234@example.com`
-   - Password fields → `SecurePass123!` (meets common requirements)
-   - Phone fields → Valid format for detected country
-   - Names → Realistic test names
-
-4. **Self-Healing Selectors**
-   - Instead of: `button.btn-primary-2024`
-   - Finds: "The button that says 'Sign Up'"
-   - Works even when classes change!
-
-5. **Clear Error Reporting**
-   ```
-   ❌ Old: "ElementNotInteractableException at line 47"
-   ✅ New: "🔍 The login button is hidden. Try scrolling down or checking if a popup is blocking it."
-   ```
-
-## Common Issues & Solutions 🔧
-
-### "Navigation failed" Error
-**Problem:** Can't connect to website
-**Solution:**
+### Advanced Options
 ```bash
-# 1. Check Playwright browsers are installed
-npx playwright install
+# Timeout for slow sites (milliseconds)
+TIMEOUT=60000
 
-# 2. Verify the URL is correct and accessible
-curl https://your-site.com
+# Retry failed operations
+MAX_RETRIES=5
 
-# 3. For local development, ensure server is running
-npm run dev  # in your app directory
+# Take screenshots on failure
+SCREENSHOT_ON_FAILURE=true
 ```
 
-### "Element not found" Error
-**Problem:** Can't find the element you're trying to interact with
-**Solution:**
-```bash
-# 1. Analyze the page first to see what's available
-analyze_ui "https://your-site.com"
+## Troubleshooting
 
-# 2. Use wait_for to handle dynamic content
-wait_for "https://your-site.com" "Login button" "visible" 10
+### "Navigation failed"
+The site can't be reached. Check:
+1. Is the URL correct?
+2. Is the site running? (for localhost)
+3. Run `npx playwright install` (if you haven't)
+
+### "Element not found"
+The button/form/link isn't there. Try:
+1. `analyze_ui "URL"` to see what's on the page
+2. `wait_for "URL" "element" "visible"` for slow-loading content
+3. Be more specific: "the blue submit button" vs just "submit"
+
+### Form won't fill
+Custom form elements. Try:
+1. `analyze_ui` to see what UI-Probe detects
+2. Use `click` for custom dropdowns
+3. Use `run_flow` for complex interactions
+
+## Smart Features
+
+### Automatic Test Data
+UI-Probe generates appropriate test data:
+- Valid emails that pass validation
+- Strong passwords that meet requirements
+- Phone numbers in the right format
+- Realistic names and addresses
+- Test credit cards (4111111111111111)
+
+### Self-Healing Tests
+When developers change:
+- Class names → UI-Probe still finds the button
+- IDs → Still works
+- Page structure → Adapts automatically
+- Text labels → Understands context
+
+### Clear Error Messages
+```
+❌ Traditional: "WebDriverException: unknown error: Element is not clickable at point (780, 532)"
+
+✅ UI-Probe: "The submit button is hidden behind a cookie consent banner. Try dismissing the banner first."
 ```
 
-### Form Not Filling Correctly
-**Problem:** Custom dropdowns or non-standard inputs
-**Solution:**
-```bash
-# 1. Check what UI-Probe sees
-analyze_ui "https://your-site.com/form"
+## API Reference
 
-# 2. For custom dropdowns, be specific
-run_flow "Click the country dropdown and select United States"
-```
+| Command | What it does | Example |
+|---------|--------------|---------|
+| `navigate` | Go to a page | `navigate "https://site.com"` |
+| `analyze_ui` | See what's on the page | `analyze_ui "https://site.com"` |
+| `fill_form` | Fill out a form | `fill_form "URL" {"field": "value"}` |
+| `run_flow` | Do multiple steps | `run_flow "Sign up and verify email"` |
+| `click` | Click something | `click "URL" "button text"` |
+| `assert_element` | Check if something exists | `assert_element "URL" "text" "visible"` |
+| `wait_for` | Wait for something | `wait_for "URL" "Loading..." "hidden"` |
 
-## Advanced Features 🎯
+## Contributing
 
-### Custom Test Data
-```javascript
-// Override automatic data generation
-fill_form("https://site.com/form", {
-  email: "specific@test.com",
-  company: "ACME Corp",
-  // Other fields filled automatically
-})
-```
+We love contributions! See [CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
-### Waiting Strategies
-```bash
-# Wait for specific content
-wait_for "https://site.com" "Payment successful" "visible" 30
+## Support
 
-# Different wait conditions
-wait_for "https://site.com" "Loading..." "hidden" 10
-```
-
-### Multi-Language Support
-```bash
-# Works with non-English sites
-run_flow "Inscrivez-vous sur https://site.fr/inscription"
-run_flow "在 https://site.cn/注册 上注册账户"
-```
-
-## API Documentation 📚
-
-### Available Tools in Claude Code CLI
-
-| Tool | Description | Example |
-|------|-------------|---------|
-| `navigate` | Go to a URL | `navigate "https://site.com"` |
-| `analyze_ui` | Scan page elements | `analyze_ui "https://site.com"` |
-| `run_flow` | Execute multi-step test | `run_flow "Sign up at https://site.com"` |
-| `fill_form` | Smart form filling | `fill_form "https://site.com/form" {}` |
-| `click` | Click elements | `click "https://site.com" "Submit button"` |
-| `assert_element` | Verify content | `assert_element "https://site.com" "Success" "visible"` |
-| `wait_for` | Wait for conditions | `wait_for "https://site.com" "Loading" "hidden"` |
-| `extract_data` | Get page data | `extract_data "https://site.com" "prices"` |
-
-## Contributing 🤝
-
-We welcome contributions! See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for guidelines.
-
-### Development Setup
-```bash
-# Clone your fork
-git clone https://github.com/yourusername/mcp-ui-probe.git
-
-# Install dependencies
-npm install
-
-# Run in development mode
-npm run dev
-
-# Run tests
-npm test
-
-# Build for production
-npm run build
-```
-
-## Support & Resources 💬
-
-- **Documentation:** [Full Docs](docs/)
-- **Examples:** [Code Examples](examples/)
-- **Issues:** [GitHub Issues](https://github.com/yourusername/mcp-ui-probe/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/yourusername/mcp-ui-probe/discussions)
+- **Docs:** [Full documentation](docs/)
+- **Examples:** [More examples](examples/)
+- **Issues:** [Report problems](https://github.com/yourusername/mcp-ui-probe/issues)
+- **Discussions:** [Ask questions](https://github.com/yourusername/mcp-ui-probe/discussions)
 
 ## License
 
-MIT - See [LICENSE](LICENSE) file
+MIT - Use it however you want!
 
 ---
 
-**Stop writing brittle test code. Start testing like a human.**
+**Stop writing code that breaks. Start testing like a human.**
 
-Ready to transform your testing? [Get started now!](#quick-start-5-minutes-)
+Ready? [Install now](#quick-start-5-minutes) or [see examples](#common-tasks)
