@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP UI Monitoring Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #00ff88;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.error {
+            background: #ff4444;
+        }
+
+        .status-dot.warning {
+            background: #ffaa00;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto 1fr;
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 80px);
+        }
+
+        .card {
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1rem;
+            overflow: hidden;
+        }
+
+        .card h2 {
+            color: #00ff88;
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #333;
+            padding-bottom: 0.5rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-column: 1 / -1;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .metric-item {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(0, 255, 136, 0.2);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00ff88;
+            display: block;
+        }
+
+        .metric-label {
+            color: #aaa;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .test-execution {
+            grid-column: 1 / 2;
+            grid-row: 2 / 4;
+        }
+
+        .logs {
+            grid-column: 2 / 4;
+            grid-row: 2 / 4;
+        }
+
+        .test-steps {
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+        }
+
+        .test-step {
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            border-left: 3px solid #00ff88;
+            background: rgba(0, 255, 136, 0.05);
+            border-radius: 0 6px 6px 0;
+            position: relative;
+        }
+
+        .test-step.running {
+            border-left-color: #ffaa00;
+            background: rgba(255, 170, 0, 0.05);
+        }
+
+        .test-step.error {
+            border-left-color: #ff4444;
+            background: rgba(255, 68, 68, 0.05);
+        }
+
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .step-name {
+            font-weight: 500;
+            color: #fff;
+        }
+
+        .step-status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .step-status.success {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .step-status.running {
+            background: #ffaa00;
+            color: #000;
+        }
+
+        .step-status.error {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .step-details {
+            color: #aaa;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .reasoning {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 4px;
+            font-style: italic;
+            color: #ccc;
+        }
+
+        .log-container {
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            padding: 0.5rem;
+            border-bottom: 1px solid #222;
+            white-space: pre-wrap;
+        }
+
+        .log-entry.error {
+            background: rgba(255, 68, 68, 0.1);
+            border-left: 3px solid #ff4444;
+        }
+
+        .log-entry.warning {
+            background: rgba(255, 170, 0, 0.1);
+            border-left: 3px solid #ffaa00;
+        }
+
+        .log-entry.info {
+            background: rgba(0, 255, 136, 0.05);
+            border-left: 3px solid #00ff88;
+        }
+
+        .log-timestamp {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .log-level {
+            display: inline-block;
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-left: 0.5rem;
+        }
+
+        .log-level.ERROR {
+            background: #ff4444;
+            color: white;
+        }
+
+        .log-level.WARN {
+            background: #ffaa00;
+            color: black;
+        }
+
+        .log-level.INFO {
+            background: #00ff88;
+            color: black;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #1a1a1a;
+            border-radius: 6px;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            background: #00ff88;
+            color: #000;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: #00cc6a;
+            transform: translateY(-1px);
+        }
+
+        .btn.secondary {
+            background: #333;
+            color: #fff;
+        }
+
+        .btn.secondary:hover {
+            background: #444;
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            z-index: 1000;
+        }
+
+        .connection-status.connected {
+            background: #00ff88;
+            color: #000;
+        }
+
+        .connection-status.disconnected {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .chart-container {
+            height: 200px;
+            background: rgba(0, 255, 136, 0.05);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            margin-top: 1rem;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>MCP UI Monitoring Dashboard</h1>
+        <div class="status-indicator">
+            <div class="status-dot" id="systemStatus"></div>
+            <span id="systemStatusText">System Online</span>
+        </div>
+    </div>
+
+    <div class="connection-status connected" id="connectionStatus">
+        Connected
+    </div>
+
+    <div class="dashboard">
+        <!-- Metrics Overview -->
+        <div class="metrics-grid">
+            <div class="metric-item">
+                <span class="metric-value" id="testsRunning">0</span>
+                <div class="metric-label">Tests Running</div>
+            </div>
+            <div class="metric-item">
+                <span class="metric-value" id="testsCompleted">0</span>
+                <div class="metric-label">Tests Completed</div>
+            </div>
+            <div class="metric-item">
+                <span class="metric-value" id="successRate">0%</span>
+                <div class="metric-label">Success Rate</div>
+            </div>
+            <div class="metric-item">
+                <span class="metric-value" id="avgDuration">0ms</span>
+                <div class="metric-label">Avg Duration</div>
+            </div>
+            <div class="metric-item">
+                <span class="metric-value" id="activeConnections">0</span>
+                <div class="metric-label">Active Connections</div>
+            </div>
+            <div class="metric-item">
+                <span class="metric-value" id="memoryUsage">0MB</span>
+                <div class="metric-label">Memory Usage</div>
+            </div>
+        </div>
+
+        <!-- Test Execution -->
+        <div class="card test-execution">
+            <h2>Test Execution</h2>
+            <div class="controls">
+                <button class="btn" onclick="clearTests()">Clear</button>
+                <button class="btn secondary" onclick="pauseUpdates()">Pause</button>
+            </div>
+            <div class="test-steps" id="testSteps">
+                <div style="text-align: center; color: #666; padding: 2rem;">
+                    No active tests
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs -->
+        <div class="card logs">
+            <h2>Real-time Logs</h2>
+            <div class="controls">
+                <button class="btn" onclick="clearLogs()">Clear</button>
+                <button class="btn secondary" onclick="exportLogs()">Export</button>
+                <select id="logLevel" onchange="filterLogs()" style="padding: 0.5rem; background: #333; color: #fff; border: none; border-radius: 4px;">
+                    <option value="">All Levels</option>
+                    <option value="ERROR">Errors</option>
+                    <option value="WARN">Warnings</option>
+                    <option value="INFO">Info</option>
+                </select>
+            </div>
+            <div class="log-container" id="logContainer">
+                <div style="text-align: center; color: #666; padding: 2rem;">
+                    Waiting for logs...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class MonitoringDashboard {
+            constructor() {
+                this.ws = null;
+                this.connected = false;
+                this.paused = false;
+                this.tests = new Map();
+                this.logs = [];
+                this.maxLogs = 1000;
+                this.metrics = {
+                    testsRunning: 0,
+                    testsCompleted: 0,
+                    testsSucceeded: 0,
+                    testsFailed: 0,
+                    totalDuration: 0,
+                    activeConnections: 0
+                };
+
+                this.initWebSocket();
+                this.startMetricsUpdater();
+                this.loadInitialData();
+            }
+
+            initWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+                this.ws = new WebSocket(wsUrl);
+
+                this.ws.onopen = () => {
+                    this.connected = true;
+                    this.updateConnectionStatus();
+                    console.log('WebSocket connected');
+                };
+
+                this.ws.onclose = () => {
+                    this.connected = false;
+                    this.updateConnectionStatus();
+                    console.log('WebSocket disconnected');
+
+                    // Reconnect after 5 seconds
+                    setTimeout(() => this.initWebSocket(), 5000);
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+
+                this.ws.onmessage = (event) => {
+                    if (!this.paused) {
+                        const message = JSON.parse(event.data);
+                        this.handleWebSocketMessage(message);
+                    }
+                };
+            }
+
+            handleWebSocketMessage(message) {
+                switch (message.type) {
+                    case 'test_start':
+                        this.handleTestStart(message.data);
+                        break;
+                    case 'test_step':
+                        this.handleTestStep(message.data);
+                        break;
+                    case 'test_complete':
+                        this.handleTestComplete(message.data);
+                        break;
+                    case 'log':
+                        this.handleLog(message.data);
+                        break;
+                    case 'metrics':
+                        this.handleMetrics(message.data);
+                        break;
+                    default:
+                        console.log('Unknown message type:', message.type);
+                }
+            }
+
+            handleTestStart(data) {
+                const test = {
+                    id: data.testId,
+                    name: data.testName,
+                    type: data.testType,
+                    startTime: new Date(data.timestamp),
+                    steps: [],
+                    status: 'running'
+                };
+
+                this.tests.set(data.testId, test);
+                this.metrics.testsRunning++;
+                this.updateTestDisplay();
+                this.updateMetrics();
+            }
+
+            handleTestStep(data) {
+                const test = this.tests.get(data.testId);
+                if (test) {
+                    const step = {
+                        name: data.stepName,
+                        type: data.stepType,
+                        status: data.status,
+                        timestamp: new Date(data.timestamp),
+                        data: data.data,
+                        reasoning: data.reasoning
+                    };
+
+                    test.steps.push(step);
+                    this.updateTestDisplay();
+                }
+            }
+
+            handleTestComplete(data) {
+                const test = this.tests.get(data.testId);
+                if (test) {
+                    test.status = data.status;
+                    test.duration = data.duration;
+                    test.results = data.results;
+                    test.error = data.error;
+                    test.endTime = new Date();
+
+                    this.metrics.testsRunning--;
+                    this.metrics.testsCompleted++;
+
+                    if (data.status === 'success') {
+                        this.metrics.testsSucceeded++;
+                    } else {
+                        this.metrics.testsFailed++;
+                    }
+
+                    this.metrics.totalDuration += data.duration;
+                    this.updateTestDisplay();
+                    this.updateMetrics();
+                }
+            }
+
+            handleLog(data) {
+                if (this.logs.length >= this.maxLogs) {
+                    this.logs.shift();
+                }
+
+                this.logs.push({
+                    timestamp: new Date(data.timestamp),
+                    level: data.level || 'INFO',
+                    message: data.message,
+                    type: data.type
+                });
+
+                this.updateLogDisplay();
+            }
+
+            handleMetrics(data) {
+                this.metrics.activeConnections = data.activeConnections || 0;
+                this.updateMetrics();
+            }
+
+            updateTestDisplay() {
+                const container = document.getElementById('testSteps');
+
+                if (this.tests.size === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #666; padding: 2rem;">No active tests</div>';
+                    return;
+                }
+
+                const testsArray = Array.from(this.tests.values()).sort((a, b) => b.startTime - a.startTime);
+
+                container.innerHTML = testsArray.map(test => {
+                    const stepsHtml = test.steps.map(step => `
+                        <div class="test-step ${step.status}">
+                            <div class="step-header">
+                                <span class="step-name">${step.name}</span>
+                                <span class="step-status ${step.status}">${step.status}</span>
+                            </div>
+                            <div class="step-details">
+                                ${step.type} • ${step.timestamp.toLocaleTimeString()}
+                                ${step.data ? `<br>Data: ${JSON.stringify(step.data)}` : ''}
+                            </div>
+                            ${step.reasoning ? `<div class="reasoning">💡 ${step.reasoning}</div>` : ''}
+                        </div>
+                    `).join('');
+
+                    return `
+                        <div class="test-container">
+                            <h3 style="color: #00ff88; margin-bottom: 0.5rem;">${test.name}</h3>
+                            <div style="color: #aaa; font-size: 0.9rem; margin-bottom: 1rem;">
+                                ${test.type} • Started: ${test.startTime.toLocaleTimeString()}
+                                ${test.duration ? ` • Duration: ${test.duration}ms` : ''}
+                            </div>
+                            ${stepsHtml}
+                        </div>
+                    `;
+                }).join('');
+
+                // Auto-scroll to bottom
+                container.scrollTop = container.scrollHeight;
+            }
+
+            updateLogDisplay() {
+                const container = document.getElementById('logContainer');
+                const levelFilter = document.getElementById('logLevel').value;
+
+                const filteredLogs = levelFilter ?
+                    this.logs.filter(log => log.level === levelFilter) :
+                    this.logs;
+
+                if (filteredLogs.length === 0) {
+                    container.innerHTML = '<div style="text-align: center; color: #666; padding: 2rem;">No logs to display</div>';
+                    return;
+                }
+
+                container.innerHTML = filteredLogs.slice(-100).map(log => `
+                    <div class="log-entry ${log.level.toLowerCase()}">
+                        <span class="log-timestamp">${log.timestamp.toLocaleTimeString()}</span>
+                        <span class="log-level ${log.level}">${log.level}</span>
+                        <div>${log.message}</div>
+                    </div>
+                `).join('');
+
+                // Auto-scroll to bottom
+                container.scrollTop = container.scrollHeight;
+            }
+
+            updateMetrics() {
+                document.getElementById('testsRunning').textContent = this.metrics.testsRunning;
+                document.getElementById('testsCompleted').textContent = this.metrics.testsCompleted;
+
+                const successRate = this.metrics.testsCompleted > 0 ?
+                    Math.round((this.metrics.testsSucceeded / this.metrics.testsCompleted) * 100) : 0;
+                document.getElementById('successRate').textContent = `${successRate}%`;
+
+                const avgDuration = this.metrics.testsCompleted > 0 ?
+                    Math.round(this.metrics.totalDuration / this.metrics.testsCompleted) : 0;
+                document.getElementById('avgDuration').textContent = `${avgDuration}ms`;
+
+                document.getElementById('activeConnections').textContent = this.metrics.activeConnections;
+
+                // Memory usage (estimated)
+                const memoryUsage = Math.round(performance.memory?.usedJSHeapSize / 1024 / 1024) || 0;
+                document.getElementById('memoryUsage').textContent = `${memoryUsage}MB`;
+            }
+
+            updateConnectionStatus() {
+                const statusEl = document.getElementById('connectionStatus');
+                const systemDot = document.getElementById('systemStatus');
+                const systemText = document.getElementById('systemStatusText');
+
+                if (this.connected) {
+                    statusEl.textContent = 'Connected';
+                    statusEl.className = 'connection-status connected';
+                    systemDot.className = 'status-dot';
+                    systemText.textContent = 'System Online';
+                } else {
+                    statusEl.textContent = 'Disconnected';
+                    statusEl.className = 'connection-status disconnected';
+                    systemDot.className = 'status-dot error';
+                    systemText.textContent = 'System Offline';
+                }
+            }
+
+            startMetricsUpdater() {
+                setInterval(() => {
+                    this.fetchMetrics();
+                }, 5000);
+            }
+
+            async fetchMetrics() {
+                try {
+                    const response = await fetch('/api/metrics');
+                    const metrics = await response.json();
+                    this.handleMetrics(metrics);
+                } catch (error) {
+                    console.error('Failed to fetch metrics:', error);
+                }
+            }
+
+            async loadInitialData() {
+                try {
+                    // Load recent logs
+                    const logsResponse = await fetch('/api/logs?limit=50');
+                    const logs = await logsResponse.json();
+
+                    logs.forEach(log => this.handleLog(log));
+
+                    // Load health status
+                    const healthResponse = await fetch('/api/health');
+                    const health = await healthResponse.json();
+
+                    if (!health.healthy) {
+                        document.getElementById('systemStatus').className = 'status-dot error';
+                        document.getElementById('systemStatusText').textContent = 'System Degraded';
+                    }
+                } catch (error) {
+                    console.error('Failed to load initial data:', error);
+                }
+            }
+        }
+
+        // Global functions for controls
+        function clearTests() {
+            dashboard.tests.clear();
+            dashboard.updateTestDisplay();
+        }
+
+        function clearLogs() {
+            dashboard.logs = [];
+            dashboard.updateLogDisplay();
+        }
+
+        function pauseUpdates() {
+            dashboard.paused = !dashboard.paused;
+            const btn = event.target;
+            btn.textContent = dashboard.paused ? 'Resume' : 'Pause';
+        }
+
+        function filterLogs() {
+            dashboard.updateLogDisplay();
+        }
+
+        function exportLogs() {
+            const logs = dashboard.logs.map(log =>
+                `${log.timestamp.toISOString()} [${log.level}] ${log.message}`
+            ).join('\n');
+
+            const blob = new Blob([logs], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `mcp-logs-${new Date().toISOString().split('T')[0]}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Initialize dashboard
+        const dashboard = new MonitoringDashboard();
+    </script>
+</body>
+</html>

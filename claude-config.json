@@ -1,0 +1,19 @@
+{
+  "// Instructions": "Copy this configuration to your Claude Desktop config file",
+  "// Mac Location": "~/Library/Application Support/Claude/claude_desktop_config.json",
+  "// Windows Location": "%APPDATA%\\Claude\\claude_desktop_config.json",
+
+  "mcpServers": {
+    "ui-tester": {
+      "command": "node",
+      "args": ["./mcp-ui-probe/dist/index.js"],
+      "env": {
+        "NODE_ENV": "production",
+        "MCP_PORT": "3000",
+        "MONITORING_PORT": "3001",
+        "BROWSER_HEADLESS": "true",
+        "LOG_LEVEL": "info"
+      }
+    }
+  }
+}

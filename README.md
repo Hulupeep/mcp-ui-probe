@@ -1,0 +1,387 @@
+# MCP UI Probe - Test Any Website Like a Human Would 🤖
+
+**Stop writing code to test websites. Just tell the AI what to do in plain English.**
+
+## What Is This? (In Simple Terms)
+
+MCP UI Probe is a tool that lets you test websites by just describing what you want to do, like:
+- *"Sign up for an account"*
+- *"Buy a product"*
+- *"Fill out the contact form"*
+
+Instead of writing complicated test code with specific button IDs and form names, you just tell it what a human would do, and it figures out the rest.
+
+## Who Is This For?
+
+- **Developers** tired of fixing broken tests every time the UI changes
+- **QA Teams** who want to test like real users, not like robots
+- **Product Managers** who want to verify features work without writing code
+- **Anyone** who needs to test websites automatically
+
+## Requirements
+
+✅ **What You Need:**
+- Node.js 18 or higher ([Download here](https://nodejs.org))
+- A website to test (must be running and accessible via URL)
+- 5 minutes to set up
+
+❌ **What You DON'T Need:**
+- Knowledge of CSS selectors
+- Programming experience for basic tests
+- Understanding of test frameworks
+
+## Installation - Step by Step
+
+### 1️⃣ Install MCP UI Probe
+
+Open your terminal (Command Prompt on Windows, Terminal on Mac) and run:
+
+```bash
+# Create a new folder for your tests
+mkdir my-ui-tests
+cd my-ui-tests
+
+# Install MCP UI Probe
+npm init -y
+npm install mcp-ui-probe
+
+# Or clone this repository
+git clone https://github.com/your-org/mcp-ui-probe.git
+cd mcp-ui-probe
+npm install
+npm run build
+```
+
+### 2️⃣ Start the Testing Server
+
+```bash
+# Start the MCP server
+npm start
+
+# You should see:
+# ✅ MCP UI Testing Server running on port 3000
+# ✅ Monitoring dashboard available at http://localhost:3001
+```
+
+### 3️⃣ Verify It's Working
+
+Open a new terminal and run the health check:
+
+```bash
+# Check if server is running
+curl http://localhost:3000/health
+
+# Should return:
+# {"status": "healthy", "version": "0.1.0"}
+```
+
+Or open your browser and go to: `http://localhost:3001` to see the monitoring dashboard.
+
+## How to Use It - Real Examples
+
+### With Claude (Desktop App)
+
+If you're using Claude Desktop app with MCP support:
+
+1. **Configure Claude** (one-time setup):
+```bash
+# Add to Claude's MCP settings
+claude mcp add ui-tester http://localhost:3000
+```
+
+2. **Talk to Claude in Natural Language**:
+```
+You: Test if users can sign up on example.com
+
+Claude: I'll test the signup flow on example.com. Let me run that for you.
+[Executes test automatically]
+
+Result: ✅ Successfully created account
+- Found signup form
+- Filled email: test1234@example.com
+- Generated secure password
+- Submitted form
+- Account created successfully
+```
+
+### With Code (For Developers)
+
+```javascript
+// simple-test.js
+const { MCPClient } = require('mcp-ui-probe/client');
+
+async function testMyWebsite() {
+  // Connect to the testing server
+  const tester = new MCPClient('http://localhost:3000');
+
+  // Test in plain English
+  const result = await tester.test({
+    goal: "Sign up for a new account",
+    url: "https://myapp.com/signup"
+  });
+
+  // Check if it worked
+  if (result.success) {
+    console.log("✅ Test passed!");
+  } else {
+    console.log("❌ Test failed:", result.errors);
+  }
+}
+
+testMyWebsite();
+```
+
+Run it:
+```bash
+node simple-test.js
+```
+
+## Real-World Examples
+
+### Example 1: Test E-Commerce Purchase
+
+```javascript
+// Tell it what to do in plain English
+await tester.test({
+  goal: "Buy a blue t-shirt in size medium",
+  url: "https://shop.example.com"
+});
+
+// It automatically:
+// 1. Finds products → navigates to t-shirts
+// 2. Selects "blue" color and "medium" size
+// 3. Adds to cart
+// 4. Goes to checkout
+// 5. Fills in test payment details
+// 6. Completes the purchase
+```
+
+### Example 2: Test Form Validation
+
+```javascript
+await tester.test({
+  goal: "Make sure the signup form validates email addresses",
+  url: "https://app.example.com/register"
+});
+
+// It automatically:
+// 1. Tries invalid emails (no @, wrong format)
+// 2. Checks error messages appear
+// 3. Tries valid email
+// 4. Verifies form accepts it
+```
+
+### Example 3: Test Multi-Step Process
+
+```javascript
+await tester.test({
+  goal: "Complete the job application process",
+  url: "https://careers.example.com/apply"
+});
+
+// It automatically handles:
+// 1. Personal information form
+// 2. Resume upload (uses test file)
+// 3. Question responses
+// 4. Review and submit
+```
+
+## Quick Start Examples
+
+### 📝 Test a Contact Form
+
+Create a file `test-contact.js`:
+
+```javascript
+const { testWebsite } = require('mcp-ui-probe');
+
+testWebsite({
+  goal: "Send a message through the contact form",
+  url: "https://yoursite.com/contact",
+  data: {
+    message: "This is a test message"
+  }
+}).then(result => {
+  console.log(result.success ? "✅ Sent!" : "❌ Failed!");
+});
+```
+
+### 🛒 Test Checkout Flow
+
+```javascript
+testWebsite({
+  goal: "Complete checkout as a guest",
+  url: "https://shop.com/cart",
+  constraints: {
+    userType: "guest",
+    paymentMethod: "credit_card",
+    shipping: "express"
+  }
+});
+```
+
+### 👤 Test User Registration
+
+```javascript
+testWebsite({
+  goal: "Register a new user account",
+  url: "https://app.com/signup",
+  expectation: "Should receive welcome email"
+});
+```
+
+## How It Works (Simple Explanation)
+
+```mermaid
+graph LR
+    A[You: "Sign up for account"] --> B[AI Looks at Page]
+    B --> C[Finds Signup Form]
+    C --> D[Figures Out Fields]
+    D --> E[Fills With Test Data]
+    E --> F[Submits & Checks Result]
+    F --> G[Reports Success/Failure]
+```
+
+1. **You say what to do** → "Create an account"
+2. **AI examines the page** → Finds forms, buttons, fields
+3. **Understands the UI** → "This is an email field, this is password"
+4. **Generates smart test data** → Valid emails, strong passwords
+5. **Executes the test** → Fills forms, clicks buttons
+6. **Reports results** → Success or failure with details
+
+## Common Questions
+
+### ❓ What kinds of websites can I test?
+
+Any website that:
+- ✅ Is accessible via URL (http://... or https://...)
+- ✅ Has forms, buttons, or interactive elements
+- ✅ Works in a browser
+
+Including:
+- Local development (http://localhost:3000)
+- Staging environments
+- Production websites
+- Password-protected sites (with credentials)
+
+### ❓ Do I need to write selectors like `#submit-btn`?
+
+**No!** That's the whole point. Instead of:
+```javascript
+// ❌ Old way - breaks when UI changes
+await page.click('#submit-btn-2');
+await page.fill('input[name="email"]', 'test@example.com');
+```
+
+You just say:
+```javascript
+// ✅ New way - works even when UI changes
+"Sign up with email test@example.com"
+```
+
+### ❓ What test data does it use?
+
+It generates realistic test data automatically:
+- **Emails**: `test1234@example.com`
+- **Names**: `John Smith`, `Jane Doe`
+- **Phones**: Valid format for detected country
+- **Addresses**: Real-looking addresses
+- **Credit Cards**: Test card numbers (4111111111111111)
+
+### ❓ Can I see what it's doing?
+
+Yes! Open `http://localhost:3001` while tests run to see:
+- Live step-by-step execution
+- Screenshots of each action
+- Timing and performance data
+- Any errors encountered
+
+## Troubleshooting
+
+### 🔧 Server won't start
+
+```bash
+# Check if port 3000 is in use
+lsof -i :3000  # Mac/Linux
+netstat -an | findstr :3000  # Windows
+
+# Use a different port
+MCP_PORT=3005 npm start
+```
+
+### 🔧 Can't connect to website
+
+```bash
+# Make sure your website is running
+curl https://your-website.com
+
+# For local sites, use the right URL
+# ✅ Correct: http://localhost:3000
+# ❌ Wrong: localhost:3000
+# ❌ Wrong: www.localhost:3000
+```
+
+### 🔧 Test can't find forms
+
+```javascript
+// Be more specific about your goal
+await tester.test({
+  goal: "Fill out the newsletter signup form in the footer",  // More specific
+  url: "https://site.com",
+  hints: {
+    formLocation: "footer",
+    formType: "newsletter"
+  }
+});
+```
+
+## What Makes This Different?
+
+| Traditional Testing | MCP UI Probe |
+|-------------------|--------------|
+| Write code with exact selectors | Describe in plain English |
+| Breaks when UI changes | Self-heals when UI changes |
+| Need to know HTML/CSS | Works like a human would |
+| Maintain hundreds of test files | One simple goal statement |
+| Hours to write tests | Minutes to describe goals |
+
+## Getting Help
+
+### 📚 Documentation
+- [Complete Usage Guide](docs/USAGE_GUIDE.md) - Detailed instructions
+- [API Reference](docs/API_REFERENCE.md) - All available commands
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues
+- [Examples](examples/) - Ready-to-run test examples
+
+### 💬 Support
+- GitHub Issues: [Report problems](https://github.com/your-org/mcp-ui-probe/issues)
+- Discord: [Join our community](https://discord.gg/mcp-ui-probe)
+- Email: support@example.com
+
+## Try It Right Now!
+
+1. **Start the server** (if not already running):
+```bash
+npm start
+```
+
+2. **Create a test file** `quick-test.js`:
+```javascript
+const { quickTest } = require('mcp-ui-probe');
+
+quickTest("Sign up on google.com");
+// (This will try to find and fill a signup form on Google)
+```
+
+3. **Run it**:
+```bash
+node quick-test.js
+```
+
+4. **Watch the magic happen** at `http://localhost:3001` 🎉
+
+---
+
+**Stop writing brittle test code. Start testing like a human.** 🚀
+
+Ready to save hours every week? [Get started now](#installation---step-by-step) or [see more examples](examples/).
