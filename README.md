@@ -4,12 +4,30 @@
 
 ## What Is This? (In Simple Terms)
 
-MCP UI Probe is a tool that lets you test websites by just describing what you want to do, like:
-- *"Sign up for an account"*
-- *"Buy a product"*
-- *"Fill out the contact form"*
+MCP UI Probe is a tool that lets you test websites by describing what you want to do AND where to do it:
+- *"Sign up for an account **on https://myapp.com/register**"*
+- *"Buy a product **at https://shop.com**"*
+- *"Fill out the contact form **on https://example.com/contact**"*
 
-Instead of writing complicated test code with specific button IDs and form names, you just tell it what a human would do, and it figures out the rest.
+**KEY POINT**: You MUST always provide the URL - the AI doesn't guess which website to test!
+
+Instead of writing complicated test code with specific button IDs and form names, you tell it what a human would do and WHERE to do it.
+
+## 🚨 Critical: How It Works
+
+**The AI needs TWO things from you:**
+1. **WHAT to test** - "sign up", "buy product", "fill form"
+2. **WHERE to test it** - The complete URL like "https://mysite.com/signup"
+
+```bash
+# ✅ CORRECT - Includes action AND location
+claude "Test signup on https://myapp.com/register"
+
+# ❌ WRONG - Missing the URL
+claude "Test signup"  # AI responds: "Where? What URL?"
+```
+
+**The AI does NOT guess URLs!** You must always tell it exactly where to go.
 
 ## Who Is This For?
 
@@ -79,27 +97,35 @@ Or open your browser and go to: `http://localhost:3001` to see the monitoring da
 
 ## How to Use It - Real Examples
 
-### With Claude (Desktop App)
+### With Claude Code CLI (Primary Method)
 
-If you're using Claude Desktop app with MCP support:
+**IMPORTANT**: You must ALWAYS provide the URL. The AI doesn't guess where to test!
 
-1. **Configure Claude** (one-time setup):
 ```bash
-# Add to Claude's MCP settings
-claude mcp add ui-tester http://localhost:3000
+# ✅ CORRECT - Always include the full URL
+claude "Test if users can sign up on https://example.com/signup"
+claude "Check if login works at http://localhost:3000/login"
+claude "Verify checkout on https://shop.com/cart"
+
+# ❌ WRONG - Missing URL (AI doesn't know where to go!)
+claude "Test signup"  # Where? No URL provided!
+claude "Check login"  # What site? Missing URL!
 ```
 
-2. **Talk to Claude in Natural Language**:
-```
-You: Test if users can sign up on example.com
+**Real Example with Claude Code CLI:**
+```bash
+You: Test if users can sign up on https://myapp.com/register
 
-Claude: I'll test the signup flow on example.com. Let me run that for you.
-[Executes test automatically]
+Claude: I'll test the signup flow on https://myapp.com/register.
+[Navigates to exact URL provided]
+[Finds signup form]
+[Fills with test data]
+[Submits and verifies]
 
 Result: ✅ Successfully created account
-- Found signup form
+- Found signup form at /register
 - Filled email: test1234@example.com
-- Generated secure password
+- Generated secure password: SecurePass123!
 - Submitted form
 - Account created successfully
 ```
@@ -140,50 +166,46 @@ node simple-test.js
 
 ### Example 1: Test E-Commerce Purchase
 
-```javascript
-// Tell it what to do in plain English
-await tester.test({
-  goal: "Buy a blue t-shirt in size medium",
-  url: "https://shop.example.com"
-});
+```bash
+# With Claude Code CLI - MUST include URL!
+claude "Buy a blue t-shirt in size medium at https://shop.example.com"
 
-// It automatically:
-// 1. Finds products → navigates to t-shirts
-// 2. Selects "blue" color and "medium" size
-// 3. Adds to cart
-// 4. Goes to checkout
-// 5. Fills in test payment details
-// 6. Completes the purchase
+# It automatically:
+# 1. Goes to https://shop.example.com
+# 2. Finds products → navigates to t-shirts
+# 3. Selects "blue" color and "medium" size
+# 4. Adds to cart
+# 5. Goes to checkout
+# 6. Fills in test payment details
+# 7. Completes the purchase
 ```
 
 ### Example 2: Test Form Validation
 
-```javascript
-await tester.test({
-  goal: "Make sure the signup form validates email addresses",
-  url: "https://app.example.com/register"
-});
+```bash
+# Always specify WHERE to test
+claude "Make sure the signup form validates email addresses on https://app.example.com/register"
 
-// It automatically:
-// 1. Tries invalid emails (no @, wrong format)
-// 2. Checks error messages appear
-// 3. Tries valid email
-// 4. Verifies form accepts it
+# It automatically:
+# 1. Navigates to https://app.example.com/register
+# 2. Tries invalid emails (no @, wrong format)
+# 3. Checks error messages appear
+# 4. Tries valid email
+# 5. Verifies form accepts it
 ```
 
 ### Example 3: Test Multi-Step Process
 
-```javascript
-await tester.test({
-  goal: "Complete the job application process",
-  url: "https://careers.example.com/apply"
-});
+```bash
+# Provide the starting URL
+claude "Complete the job application process starting at https://careers.example.com/apply"
 
-// It automatically handles:
-// 1. Personal information form
-// 2. Resume upload (uses test file)
-// 3. Question responses
-// 4. Review and submit
+# It automatically handles:
+# 1. Navigating to the application page
+# 2. Personal information form
+# 3. Resume upload (uses test file)
+# 4. Question responses
+# 5. Review and submit
 ```
 
 ## Quick Start Examples
