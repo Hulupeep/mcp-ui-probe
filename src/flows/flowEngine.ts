@@ -260,6 +260,61 @@ export class FlowEngine {
     }
   }
 
+  private async handleCustomDropdown(page: Page, element: any, field: FormField, value: any): Promise<void> {
+    try {
+      // Common patterns for custom dropdowns
+
+      // Pattern 1: Click to open dropdown
+      await element.click();
+      await page.waitForTimeout(500);
+
+      // Look for dropdown options
+      const optionSelectors = [
+        `[role="option"]:has-text("${value}")`,
+        `[role="listbox"] >> text="${value}"`,
+        `.dropdown-item:has-text("${value}")`,
+        `.select-option:has-text("${value}")`,
+        `li:has-text("${value}")`,
+        `[data-value="${value}"]`
+      ];
+
+      let optionFound = false;
+      for (const selector of optionSelectors) {
+        try {
+          const option = page.locator(selector).first();
+          if (await option.isVisible({ timeout: 1000 })) {
+            await option.click();
+            optionFound = true;
+            logger.info('Custom dropdown option selected', { selector, value });
+            break;
+          }
+        } catch (e) {
+          // Continue to next selector
+        }
+      }
+
+      if (!optionFound) {
+        // Pattern 2: Type to filter (for combobox)
+        logger.info('Trying combobox pattern', { value });
+        await element.fill('');
+        await element.type(value);
+        await page.waitForTimeout(500);
+
+        // Try to click first matching option
+        const filteredOption = page.locator(`[role="option"]`).first();
+        if (await filteredOption.isVisible({ timeout: 1000 })) {
+          await filteredOption.click();
+        } else {
+          // Press Enter to select
+          await element.press('Enter');
+        }
+      }
+    } catch (error) {
+      logger.error('Failed to handle custom dropdown', { field: field.name, error });
+      throw error;
+    }
+  }
+
   private async inputValue(page: Page, element: any, field: FormField, value: any): Promise<void> {
     switch (field.type) {
       case 'checkbox':
@@ -275,7 +330,14 @@ export class FlowEngine {
         break;
 
       case 'select':
-        await element.selectOption(value);
+        // Try standard select first
+        try {
+          await element.selectOption(value);
+        } catch (error) {
+          // Handle custom dropdown/combobox
+          logger.info('Standard select failed, trying custom dropdown', { selector: field.selector });
+          await this.handleCustomDropdown(page, element, field, value);
+        }
         break;
 
       case 'file':

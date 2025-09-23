@@ -316,39 +316,60 @@ export class MCPServer {
 
   private async handleNavigate(params: NavigateParams): Promise<MCPToolResult> {
     try {
-      await this.driver.navigate(params.url, params.waitUntil);
+      // Navigate and capture response
+      const response = await this.driver.navigateWithResponse(params.url, params.waitUntil);
       const page = await this.driver.getPage();
       const currentUrl = page.url();
-
-      // Check for 404 indicators in the page content
       const pageTitle = await page.title();
-      const pageContent = await page.content();
 
-      // Common 404 indicators
-      const is404 = (
-        pageTitle.toLowerCase().includes('404') ||
-        pageTitle.toLowerCase().includes('not found') ||
-        pageContent.includes('404') && (
-          pageContent.includes('Page Not Found') ||
-          pageContent.includes('page not found') ||
-          pageContent.includes('The page you are looking for') ||
-          pageContent.includes('could not be found') ||
-          pageContent.includes('doesn\'t exist') ||
-          pageContent.includes('Error 404')
-        )
-      );
+      // Check HTTP status code
+      const httpStatus = response ? response.status() : 200;
+      const isHTTP404 = httpStatus === 404;
+      const isHTTPError = httpStatus >= 400;
 
-      // Check if URL changed (redirected to 404 page)
-      const urlChanged = currentUrl !== params.url && currentUrl.includes('404');
+      // Get page text content for better detection
+      const pageText = await page.locator('body').textContent() || '';
+
+      // Enhanced 404 detection
+      const contentIndicators404 = [
+        pageTitle.toLowerCase().includes('404'),
+        pageTitle.toLowerCase().includes('not found'),
+        pageTitle.toLowerCase().includes('page not found'),
+        pageText.includes('404') && pageText.toLowerCase().includes('not found'),
+        pageText.includes('404 - '),
+        pageText.includes('Error 404'),
+        pageText.includes('404 Error'),
+        pageText.toLowerCase().includes('the page you are looking for'),
+        pageText.toLowerCase().includes('could not be found'),
+        pageText.toLowerCase().includes('page cannot be found'),
+        pageText.toLowerCase().includes('doesn\'t exist'),
+        pageText.toLowerCase().includes('does not exist'),
+        currentUrl !== params.url && currentUrl.includes('404')
+      ];
+
+      // Count how many indicators are present
+      const indicatorCount = contentIndicators404.filter(Boolean).length;
+      const is404Page = isHTTP404 || indicatorCount >= 2;
+
+      // Check for empty or error pages
+      const isEmpty = pageText.trim().length < 100;
+      const isError = isHTTPError || pageTitle.toLowerCase().includes('error');
+
+      const success = !is404Page && !isHTTPError && !isEmpty;
 
       return {
-        success: !is404,
+        success,
         data: {
-          ok: !is404,
+          ok: success,
           currentUrl,
           pageTitle,
-          is404Page: is404 || urlChanged,
-          warning: is404 ? 'Page appears to be a 404 error page' : undefined,
+          httpStatus,
+          is404Page,
+          isError,
+          isEmpty,
+          warning: is404Page ? `Page appears to be a 404 error (HTTP ${httpStatus}, indicators: ${indicatorCount})` :
+                   isHTTPError ? `HTTP Error ${httpStatus}` :
+                   isEmpty ? 'Page appears to be empty' : undefined,
         },
       };
     } catch (error) {
