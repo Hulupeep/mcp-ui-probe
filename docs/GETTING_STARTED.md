@@ -1,365 +1,456 @@
-# Getting Started with MCP UI Probe
+# Getting Started with UI-Probe in Claude Code CLI
 
-## For Claude Code CLI Users (Primary Guide)
+This guide walks you through setting up UI-Probe to test websites using plain English commands in Claude Code CLI.
 
-### What You'll Be Able to Do
+## Quick Overview
 
-Once set up, you can tell Claude Code things like:
+UI-Probe lets you test websites by describing what you want in plain English:
 
 ```bash
-# You MUST always provide the URL - the AI doesn't guess!
-"Test if users can sign up on https://mysite.com/register"
-"Check if the checkout works at https://shop.com/cart"
-"Verify the contact form at https://example.com/contact"
-"Test login on localhost:3000/login"
+# Instead of writing code with complex selectors...
+# You just describe what you want to test:
+run_flow "Go to https://myapp.com/signup and create an account"
 ```
 
-**IMPORTANT**: Always provide both:
-1. **What to test** (signup, login, checkout, etc.)
-2. **Where to test it** (the complete URL including http:// or https://)
+## Prerequisites
 
-### Step 1: Prerequisites
+Before you begin, ensure you have:
 
-Before starting, make sure you have:
+1. **Node.js 18+** - [Download here](https://nodejs.org)
+2. **Git** - For cloning the repository
+3. **Claude Code CLI** - Should be installed and working
+4. **5-10 minutes** - For initial setup
 
-1. **Node.js installed** (version 18 or higher)
-   - Check: `node --version`
-   - Install from: [nodejs.org](https://nodejs.org)
+## Step-by-Step Installation
 
-2. **Claude Code CLI** installed and working
-   - You should be able to run `claude` commands
-
-3. **A website to test**
-   - Must be accessible via URL
-   - Can be local: `http://localhost:3000`
-   - Or remote: `https://yoursite.com`
-
-### Step 2: Install MCP UI Probe
-
-**IMPORTANT**: This is NOT on npm yet. You must clone from GitHub.
+### Step 1: Clone UI-Probe
 
 ```bash
-# Clone the repository (do this OUTSIDE your project folder)
-cd ~  # or wherever you keep tools
-git clone https://github.com/Hulupeep/mcp-ui-probe.git
+# Navigate to where you keep your tools (NOT inside your project)
+cd ~  # or any directory outside your project
+
+# Clone the repository
+git clone https://github.com/yourusername/mcp-ui-probe.git
+
+# Enter the directory
 cd mcp-ui-probe
+```
 
-# Install dependencies and build
+### Step 2: Install and Build
+
+```bash
+# Install dependencies
 npm install
-npm run build
 
-# CRITICAL STEP: Install Playwright browsers (470MB)
+# Build the project
+npm run build
+```
+
+### Step 3: Install Browser Automation (CRITICAL!)
+
+This step is **essential** - UI-Probe needs real browsers to test websites:
+
+```bash
+# Download Playwright browsers (470MB, one-time)
 npx playwright install
 
-# Install system dependencies (requires sudo)
+# If you see permission errors, also run:
 sudo npx playwright install-deps
-# OR manually:
-sudo apt-get install libgstreamer-plugins-bad1.0-0 libavif16
 ```
 
-**DO NOT** run `npm init` in your existing project - that will mess up your package.json!
+⚠️ **Important:** Skipping this step will cause all tests to fail with "Navigation failed" errors!
 
-⚠️ **IMPORTANT**: The `npx playwright install` step is REQUIRED! Without it, all UI tests will fail with "Navigation failed" errors.
+### Step 4: Configure Claude Code CLI
 
-### Step 3: Start the Testing Server
+Now tell Claude Code about UI-Probe:
 
 ```bash
-# In the mcp-ui-probe directory
-npm start
+# Navigate to YOUR PROJECT directory (where you want to test)
+cd /path/to/your/project
 
-# You should see:
-# ✅ MCP UI Testing Server started on port 3000
-# ✅ Monitoring dashboard available at http://localhost:3001
-# 📊 Waiting for test requests...
+# Add UI-Probe as an MCP server (use absolute path)
+claude mcp add ui-probe "node" "/absolute/path/to/mcp-ui-probe/dist/index.js"
+
+# Example if you cloned to home directory:
+claude mcp add ui-probe "node" "$HOME/mcp-ui-probe/dist/index.js"
 ```
 
-**Keep this terminal open!** The server needs to stay running.
+### Step 5: Restart Claude Code
 
-### Step 4: Configure Claude Code
+After adding the MCP server:
 
-Create or update `.claude/mcp_settings.json` in your project:
+1. Exit your current Claude Code session (Ctrl+C or type `exit`)
+2. Start a new Claude Code session
+3. UI-Probe tools are now available!
 
-```json
-{
-  "servers": {
-    "ui-tester": {
-      "command": "node",
-      "args": ["/absolute/path/to/mcp-ui-probe/dist/index.js"],
-      "env": {
-        "MCP_PORT": "3000",
-        "MONITORING_PORT": "3001",
-        "BROWSER_HEADLESS": "true"
-      }
-    }
-  }
-}
-```
+### Step 6: (Optional) Enable AI Features
 
-**Note**: The automatic setup command is planned but not yet implemented.
-
-### Step 5: Verify Everything Works
-
-1. **Check the monitoring dashboard:**
-   - Open browser: `http://localhost:3001`
-   - Should see the dashboard interface
-
-2. **Test with Claude Code CLI:**
-   ```bash
-   # Test a public site (always include the URL!)
-   claude "Test if the search works on https://example.com"
-   ```
-
-3. **Check server logs:**
-   - You should see activity in the terminal running `npm start`
-
-### Step 6: Your First Real Tests
-
-#### Testing Your Local Development Site
+For better natural language understanding, add your OpenAI API key:
 
 ```bash
-# MUST include localhost URL
-claude "Test if users can sign up on http://localhost:3000/register"
+# Navigate to mcp-ui-probe directory
+cd ~/mcp-ui-probe
 
-# Claude will:
-# 1. Navigate to http://localhost:3000/register
-# 2. Find the signup form
-# 3. Fill it with test data
-# 4. Submit and check results
+# Create .env file with your API key
+echo "OPENAI_API_KEY=sk-your-key-here" > .env
 ```
 
-#### Testing a Production Site
+This enables:
+- Smarter interpretation of commands
+- Better form filling
+- Clearer error messages
+
+## Verify Installation
+
+Let's confirm everything is working:
+
+### Test 1: Basic Analysis
+
+In Claude Code CLI, type:
+
+```
+analyze_ui "https://example.com"
+```
+
+Expected output:
+```
+📊 UI Analysis for https://example.com
+
+Found 2 forms:
+  - newsletter_signup (footer)
+  - search_form (header)
+
+Found 5 buttons:
+  - "More information" (main content)
+  - "Subscribe" (newsletter)
+  ...
+
+Found 3 input fields:
+  - email_field (newsletter)
+  - search_field (header)
+  ...
+```
+
+### Test 2: Navigation
+
+```
+navigate "https://google.com"
+```
+
+Expected output:
+```
+✅ Successfully navigated to https://google.com
+Page title: Google
+Load time: 0.8s
+```
+
+### Test 3: Simple Interaction
+
+```
+run_flow "Go to https://example.com and click the 'More information' link"
+```
+
+## Basic Commands
+
+Here are the main commands you'll use in Claude Code CLI:
+
+### navigate
+Go to a specific webpage:
+```bash
+navigate "https://your-site.com"
+```
+
+### analyze_ui
+Understand what's on a page:
+```bash
+analyze_ui "https://your-site.com"
+```
+Shows all forms, buttons, inputs, and interactive elements.
+
+### fill_form
+Intelligently fill out forms:
+```bash
+fill_form "https://your-site.com/contact" {"message": "Test message"}
+```
+Automatically fills all fields, using your overrides where specified.
+
+### run_flow
+Execute complete test scenarios:
+```bash
+run_flow "Go to https://site.com/login, sign in with test@example.com and password123, verify dashboard loads"
+```
+
+### assert_element
+Verify content exists:
+```bash
+assert_element "https://site.com" "Welcome message" "visible"
+```
+
+### wait_for
+Handle dynamic content:
+```bash
+wait_for "https://site.com" "Loading spinner" "hidden" 10
+```
+
+## Real-World Examples
+
+### Example 1: Test User Registration
 
 ```bash
-# Always provide the full URL
-claude "Test the login process on https://myapp.com/login"
-
-# Claude will:
-# 1. Go to the exact URL you provided
-# 2. Find the login form
-# 3. Test with generated credentials
-# 4. Report success or failure
+run_flow "Navigate to https://myapp.com/signup, fill out the registration form, submit it, and verify account creation"
 ```
 
-#### Testing Multi-Step Processes
+UI-Probe will:
+1. Navigate to the signup page
+2. Identify all form fields
+3. Generate appropriate test data (valid email, strong password, etc.)
+4. Fill and submit the form
+5. Verify success
+
+### Example 2: Test E-Commerce Purchase
 
 ```bash
-# Specify the starting URL
-claude "Starting from https://shop.com/products,
-        find a laptop under $1000 and add it to cart"
-
-# Claude will:
-# 1. Start at /products page
-# 2. Find and filter laptops
-# 3. Select one under $1000
-# 4. Add to cart
-# 5. Verify it was added
+run_flow "Go to https://shop.com, search for 'laptop', add the first result to cart, and proceed to checkout"
 ```
 
-## Understanding URL Requirements
+UI-Probe will:
+1. Navigate to the shop
+2. Find and use the search feature
+3. Select a product
+4. Add to cart
+5. Navigate through checkout
 
-### ✅ Correct Usage - Always Provide URLs
+### Example 3: Test Form Validation
 
 ```bash
-# GOOD - URL is specified
-"Test signup at https://app.com/register"
-"Check if login works on http://localhost:3000/login"
-"Verify checkout on https://shop.com/cart"
-
-# GOOD - Clear starting point for navigation
-"Starting from https://app.com, navigate to signup and test it"
-"Go to https://shop.com and search for blue shirts"
+fill_form "https://myapp.com/contact" {"email": "invalid-email", "phone": "123"}
 ```
 
-### ❌ Wrong Usage - Missing URLs
+UI-Probe will:
+1. Fill the form with invalid data
+2. Submit it
+3. Report validation errors clearly
 
-```bash
-# BAD - No URL provided
-"Test signup"  # Where? The AI doesn't know!
-"Check if login works"  # On which site?
-"Verify the checkout process"  # What URL?
-
-# BAD - Incomplete URLs
-"Test signup on myapp"  # Missing protocol
-"Check localhost"  # Missing port and protocol
-"Test example.com"  # Missing protocol (http:// or https://)
-```
-
-## Common Claude Code CLI Patterns
-
-### Pattern 1: Direct Form Testing
-```bash
-# Provide exact form URL
-claude "Test the contact form at https://mysite.com/contact"
-```
-
-### Pattern 2: Navigation Testing
-```bash
-# Start from homepage, navigate to form
-claude "Starting from https://mysite.com,
-        click on 'Contact Us' and test the form"
-```
-
-### Pattern 3: Validation Testing
-```bash
-# Test specific validation rules
-claude "Test if email validation works correctly
-        on the signup form at https://app.com/register"
-```
-
-### Pattern 4: Multi-Step Workflows
-```bash
-# Complete purchase flow
-claude "On https://shop.com, search for 'laptop',
-        add the first result to cart,
-        and proceed to checkout"
-```
-
-## Examples for Different Scenarios
+## Testing Your Own Sites
 
 ### Local Development
+
 ```bash
-# Testing on localhost (include port!)
-claude "Test user registration on http://localhost:3000/signup"
-claude "Verify API integration on http://localhost:8080/dashboard"
-claude "Check form validation on http://127.0.0.1:5000/contact"
+# Make sure your dev server is running first!
+# In your project: npm run dev (or similar)
+
+# Then in Claude Code CLI:
+analyze_ui "http://localhost:3000"
+run_flow "Sign up for an account at http://localhost:3000/register"
 ```
 
 ### Staging Environment
+
 ```bash
-# Testing staging sites
-claude "Test new feature on https://staging.myapp.com/feature"
-claude "Verify deployment on https://test.example.com"
+run_flow "Test the new feature at https://staging.myapp.com/feature"
 ```
 
-### Production Testing
+### Production (Careful!)
+
 ```bash
-# Careful testing on production
-claude "Verify the contact form still works on https://myapp.com/contact
-        but don't submit real data"
+# Test without submitting real data
+run_flow "Navigate to https://myapp.com/contact and verify the form loads correctly without submitting"
 ```
 
-### With Specific Constraints
-```bash
-# Test with specific requirements
-claude "Test signup on https://app.com/register
-        using a UK phone number and London address"
+## Common Patterns
 
-claude "Test checkout on https://shop.com
-        with express shipping to California"
+### Multi-Step User Journey
+```bash
+run_flow "Go to https://app.com, click login, enter demo@example.com and Demo123!, click submit, verify dashboard appears"
 ```
 
-## Debugging Common Issues
-
-### Issue: "Cannot find form"
-
-**Problem**: AI can't locate the form on the page
-
-**Solution**: Be more specific with the URL and location:
+### Form with Specific Data
 ```bash
-# Instead of:
-claude "Test signup"
-
-# Use:
-claude "Test the signup form at https://app.com/register
-        (it's in a modal that opens when you click 'Get Started')"
-```
-
-### Issue: "URL not accessible"
-
-**Problem**: The site can't be reached
-
-**Solutions**:
-```bash
-# Check if site is running
-curl http://localhost:3000  # Should return HTML
-
-# For local development, ensure correct URL format
-# ✅ Correct
-"http://localhost:3000"
-"http://127.0.0.1:3000"
-
-# ❌ Wrong
-"localhost:3000"  # Missing protocol
-"www.localhost:3000"  # Invalid format
-```
-
-### Issue: "Test runs on wrong page"
-
-**Problem**: AI navigates to unexpected page
-
-**Solution**: Provide explicit URL and context:
-```bash
-# Be very specific
-claude "Test ONLY the newsletter signup at https://app.com/footer
-        (not the main registration form)"
-```
-
-## Monitoring Your Tests
-
-While tests run, you can:
-
-1. **Watch Live Execution**: Open `http://localhost:3001`
-2. **See AI Decisions**: Understand why each action was taken
-3. **View Screenshots**: See what the AI sees
-4. **Check Timing**: Monitor performance metrics
-
-## Advanced Usage
-
-### Running Multiple Tests
-```bash
-# Test multiple forms in sequence
-claude "First test login at https://app.com/login,
-        then test signup at https://app.com/register,
-        finally test password reset at https://app.com/forgot"
+fill_form "https://app.com/profile" {
+  "company": "ACME Corp",
+  "phone": "555-0100"
+}
+# Other fields filled automatically
 ```
 
 ### Conditional Testing
 ```bash
-# Test with conditions
-claude "If https://shop.com has a sale banner,
-        test purchasing a discounted item,
-        otherwise test regular purchase"
+run_flow "Go to https://shop.com, if there's a sale banner, click it and verify discount prices appear"
 ```
 
-### Performance Testing
+### Testing Search
 ```bash
-# Check performance while testing
-claude "Test how quickly the signup form at https://app.com/register
-        loads and can be submitted"
+run_flow "Go to https://docs.site.com, search for 'installation', verify results contain setup guide"
 ```
 
-## Integration with CI/CD
+## Troubleshooting
 
-Add to your CI pipeline:
+### "Navigation failed" Error
 
-```yaml
-# .github/workflows/ui-tests.yml
-- name: Start MCP UI Probe
-  run: |
-    cd mcp-ui-probe
-    npm start &
-    sleep 5
+**Cause:** Playwright browsers not installed or URL incorrect
 
-- name: Run UI Tests
-  run: |
-    claude "Test critical user flows on https://staging.myapp.com/signup"
-    claude "Verify checkout process on https://staging.myapp.com/shop"
+**Fix:**
+```bash
+# Install browsers
+cd ~/mcp-ui-probe
+npx playwright install
+
+# Verify URL is accessible
+curl https://your-url.com
 ```
+
+### "Tool not found" in Claude Code
+
+**Cause:** MCP server not loaded
+
+**Fix:**
+1. Check config: `claude mcp list`
+2. Restart Claude Code
+3. Re-add if needed: `claude mcp add ui-probe "node" "/path/to/mcp-ui-probe/dist/index.js"`
+
+### "Element not found" Error
+
+**Cause:** Element doesn't exist or isn't visible yet
+
+**Fix:**
+```bash
+# First, see what's on the page
+analyze_ui "https://your-site.com"
+
+# Use wait_for for dynamic content
+wait_for "https://your-site.com" "Button text" "visible" 10
+```
+
+### Form Not Filling Correctly
+
+**Cause:** Custom dropdowns or non-standard inputs
+
+**Fix:**
+```bash
+# Analyze the form structure
+analyze_ui "https://your-site.com/form"
+
+# Be specific in commands
+run_flow "Click the country dropdown and select United States"
+```
+
+## Best Practices
+
+### 1. Start Simple
+Begin with basic commands before complex flows:
+```bash
+# First: Navigate
+navigate "https://myapp.com"
+
+# Then: Analyze
+analyze_ui "https://myapp.com"
+
+# Finally: Interact
+run_flow "Complete signup at https://myapp.com/register"
+```
+
+### 2. Use analyze_ui First
+Before writing tests, understand what UI-Probe sees:
+```bash
+analyze_ui "https://your-site.com/form"
+```
+
+### 3. Be Specific When Needed
+```bash
+# Too vague
+click "https://site.com" "Submit"
+
+# Better
+click "https://site.com" "Submit button in the contact form"
+```
+
+### 4. Test Incrementally
+Build up complex tests step by step:
+```bash
+# Step 1: Can we navigate?
+navigate "https://app.com"
+
+# Step 2: Can we find the form?
+analyze_ui "https://app.com/signup"
+
+# Step 3: Can we fill it?
+fill_form "https://app.com/signup" {}
+
+# Step 4: Complete flow
+run_flow "Complete signup process at https://app.com/signup"
+```
+
+## Advanced Configuration
+
+### Environment Variables (.env)
+
+Create a `.env` file in the mcp-ui-probe directory:
+
+```bash
+# AI Integration
+OPENAI_API_KEY=sk-...        # For GPT-4
+ANTHROPIC_API_KEY=sk-ant-... # For Claude
+
+# Browser Settings
+HEADLESS=false               # Show browser window
+DEBUG=true                   # Verbose logging
+
+# Performance
+TIMEOUT=30000                # Default timeout (ms)
+CACHE_TTL=300000            # Cache responses for 5 min
+```
+
+### Custom Test Data
+
+Override automatic data generation:
+
+```javascript
+fill_form "https://site.com/form" {
+  "email": "specific@test.com",
+  "company": "Test Corp"
+  // Other fields auto-filled
+}
+```
+
+## Testing the Test Suite
+
+UI-Probe includes test pages for verification:
+
+```bash
+# Terminal 1: Start test server
+cd ~/mcp-ui-probe
+npm run test:server
+
+# Terminal 2: In Claude Code CLI
+analyze_ui "http://localhost:8080/test/forms"
+fill_form "http://localhost:8080/test/forms" {}
+run_flow "Complete all tests at http://localhost:8080/test"
+```
+
+Test pages available:
+- `/test/forms` - Various form types
+- `/test/navigation` - Links and buttons
+- `/test/dynamic` - JavaScript content
+- `/test/validation` - Form validation
 
 ## Next Steps
 
-1. **Try different sites**: Test your local development, staging, and production
-2. **Explore the dashboard**: Watch tests execute at `http://localhost:3001`
-3. **Read the Claude Code Guide**: [CLAUDE_CODE_GUIDE.md](CLAUDE_CODE_GUIDE.md)
-4. **Check examples**: Look at `examples/` directory for code samples
+Now that UI-Probe is working:
+
+1. **Test your sites** - Start with simple pages, then complex flows
+2. **Read the [Usage Guide](USAGE.md)** - Detailed command documentation
+3. **Check [Examples](../examples/)** - Real-world test scenarios
+4. **Enable AI** - Add your API key for better understanding
+5. **Join the community** - Share tests and get help
 
 ## Getting Help
 
-- **Dashboard**: Check `http://localhost:3001` for live execution details
-- **Logs**: Server logs show what's happening
-- **GitHub Issues**: [Report problems](https://github.com/Hulupeep/mcp-ui-probe/issues)
-- **Examples**: See `examples/` folder for working code
+- **This guide** - You're reading it!
+- **[Usage Guide](USAGE.md)** - Detailed documentation
+- **[Examples](../examples/)** - Code samples
+- **[GitHub Issues](https://github.com/yourusername/mcp-ui-probe/issues)** - Report problems
+- **[API Reference](API_REFERENCE.md)** - Complete command list
 
 ---
 
-**Remember**: The AI is smart about finding elements and understanding pages, but it ALWAYS needs to know the URL. Never assume it will guess where to go!
+Remember: UI-Probe makes testing as simple as describing what a human would do. No more brittle selectors or complex code!

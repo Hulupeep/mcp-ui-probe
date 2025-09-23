@@ -12,6 +12,8 @@ import { GoalParser } from '../utils/goalParser.js';
 import { LLMStrategy } from '../llm/llmStrategy.js';
 import { WorkflowDecomposer } from '../llm/workflowDecomposer.js';
 import { AdaptiveExecutor } from '../llm/adaptiveExecutor.js';
+import { ErrorEnhancer } from '../llm/errorEnhancer.js';
+import { FieldNamer } from '../utils/fieldNamer.js';
 import {
   MCPToolResult,
   NavigateParams,
@@ -35,6 +37,7 @@ export class MCPServer {
   private llmStrategy: LLMStrategy;
   private workflowDecomposer: WorkflowDecomposer;
   private adaptiveExecutor: AdaptiveExecutor;
+  private errorEnhancer: ErrorEnhancer;
 
   constructor() {
     this.server = new Server(
@@ -55,6 +58,7 @@ export class MCPServer {
     this.llmStrategy = new LLMStrategy();
     this.workflowDecomposer = new WorkflowDecomposer();
     this.adaptiveExecutor = new AdaptiveExecutor();
+    this.errorEnhancer = new ErrorEnhancer(this.llmStrategy);
 
     this.setupToolHandlers();
   }
@@ -411,7 +415,22 @@ export class MCPServer {
         },
       };
     } catch (error) {
-      throw new NavigationError('Navigation failed', error instanceof Error ? error : new Error(String(error)));
+      // Enhance error with user-friendly messages
+      const enhanced = await this.errorEnhancer.enhance(error as Error, {
+        url: params.url,
+        waitUntil: params.waitUntil,
+        action: 'navigate'
+      });
+
+      logger.error('Navigation failed with enhanced details', { enhanced });
+
+      // Format for CLI output
+      const formattedError = this.errorEnhancer.formatForCLI(enhanced);
+
+      throw new NavigationError(
+        enhanced.userFriendlyMessage,
+        new Error(formattedError)
+      );
     }
   }
 
@@ -424,7 +443,16 @@ export class MCPServer {
         data: analysis,
       };
     } catch (error) {
-      throw new NavigationError('UI analysis failed', error instanceof Error ? error : new Error(String(error)));
+      const page = await this.driver.getPage().catch(() => null);
+      const enhanced = await this.errorEnhancer.enhance(error as Error, {
+        url: page?.url(),
+        action: 'analyze_ui'
+      });
+
+      throw new NavigationError(
+        enhanced.userFriendlyMessage,
+        new Error(this.errorEnhancer.formatForCLI(enhanced))
+      );
     }
   }
 
@@ -1137,7 +1165,17 @@ export class MCPServer {
           if (isVisible) {
             const text = await element.textContent();
             if (text && text.trim() && !errors.includes(text.trim())) {
-              errors.push(text.trim());
+              // Use ErrorEnhancer to classify alerts vs errors
+              const classification = this.errorEnhancer.classifyAlert(text.trim(), element);
+
+              // Only add actual errors, not informational messages
+              if (classification === 'error') {
+                errors.push(text.trim());
+              } else if (classification === 'warning') {
+                logger.info('Found warning (not error):', { text: text.trim() });
+              } else {
+                logger.debug('Found informational message:', { text: text.trim() });
+              }
             }
           }
         }
