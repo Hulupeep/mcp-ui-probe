@@ -13,7 +13,7 @@ class MCPTestClient:
             ['npx', 'mcp-ui-probe@latest', 'start'],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,  # Suppress stderr
             text=True,
             bufsize=0
         )
@@ -38,12 +38,22 @@ class MCPTestClient:
         self.process.stdin.write(request_str)
         self.process.stdin.flush()
 
-        # Read response
-        response_line = self.process.stdout.readline()
-        if response_line:
-            response = json.loads(response_line)
-            print(f"📥 Response: {json.dumps(response, indent=2)[:500]}...")
-            return response
+        # Read response - skip non-JSON lines
+        max_attempts = 10
+        for _ in range(max_attempts):
+            response_line = self.process.stdout.readline()
+            if not response_line:
+                break
+
+            # Skip log lines
+            if response_line.strip() and not response_line.startswith('['):
+                try:
+                    response = json.loads(response_line)
+                    print(f"📥 Response: {json.dumps(response, indent=2)[:500]}...")
+                    return response
+                except json.JSONDecodeError:
+                    # Not JSON, continue to next line
+                    continue
         return {}
 
     def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict:
@@ -63,7 +73,11 @@ class MCPTestClient:
         print("\n1️⃣  INITIALIZE CONNECTION")
         self.send_request("initialize", {
             "protocolVersion": "0.1.0",
-            "capabilities": {}
+            "capabilities": {},
+            "clientInfo": {
+                "name": "test-client",
+                "version": "1.0.0"
+            }
         })
 
         # Test 2: List tools
@@ -114,10 +128,10 @@ class MCPTestClient:
 
 if __name__ == "__main__":
     # Make sure test server is running first
-    print("⚠️  Make sure you have the test server running:")
+    print("⚠️  Make sure the test server is running:")
     print("   npx mcp-ui-probe@latest test-server")
-    print("\nPress Enter to continue...")
-    input()
+    print("   (Server is already running in background)")
+    print()
 
     client = MCPTestClient()
     try:
