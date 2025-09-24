@@ -107,9 +107,9 @@ npx mcp-ui-probe test-server   # Start test playground
 npx mcp-ui-probe start         # Start MCP server
 ```
 
-#### ⚠️ Important: Adding to Claude Desktop
+#### ⚠️ Important: Adding to Claude Code CLI
 
-Claude Desktop needs the FULL PATH to npx (not just "npx").
+Claude Code CLI needs the FULL PATH to npx (not just "npx").
 
 **Automatic Setup (Recommended):**
 ```bash
@@ -146,7 +146,9 @@ claude mcp add ui-probe "$HOME/.nvm/versions/node/v22.11.0/bin/npx" "mcp-ui-prob
 claude mcp add ui-probe "C:\Program Files\nodejs\npx.cmd" "mcp-ui-probe@latest" "start"
 ```
 
-**Step 3: Restart Claude Desktop**
+**Step 3: Restart Claude Code CLI**
+
+The MCP server will be available next time you start Claude Code.
 
 ### Option 2: Install from Source
 
@@ -165,7 +167,7 @@ npx playwright install
 claude mcp add ui-probe "node" "/path/to/mcp-ui-probe/dist/index.js"
 ```
 
-### Step 3: Add to Claude Desktop
+### Step 3: Add to Claude Code CLI
 
 See detailed instructions above in Option 1.
 
@@ -355,11 +357,11 @@ SCREENSHOT_ON_FAILURE=true
 
 ## Troubleshooting
 
-### "Failed to connect" or "Connection failed" in Claude Desktop
+### "Failed to connect" or "Connection failed" in Claude Code CLI
 
-**Problem:** Claude shows ui-probe as "failed" or can't connect.
+**Problem:** Claude shows ui-probe as "failed" or can't connect when you run `claude mcp list`.
 
-**Solution:** Claude needs the full path to npx, not just "npx".
+**Solution:** Claude Code CLI needs the full path to npx, not just "npx".
 
 1. **Find your npx location:**
    ```bash
@@ -378,7 +380,10 @@ SCREENSHOT_ON_FAILURE=true
    claude mcp add ui-probe "/path/from/step1/npx" "mcp-ui-probe@latest" "start"
    ```
 
-4. **Restart Claude Desktop**
+4. **Start a new Claude Code session**
+   ```bash
+   claude  # The MCP server will now connect properly
+   ```
 
 **Common npx locations:**
 - Standard Node.js: `/usr/local/bin/npx`

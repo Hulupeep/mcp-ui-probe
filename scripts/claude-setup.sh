@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "🚀 UI-Probe Claude Desktop Setup"
-echo "================================"
+echo "🚀 UI-Probe Claude Code CLI Setup"
+echo "=================================="
 echo ""
 
 # Find npx
@@ -24,21 +24,21 @@ if claude mcp list 2>/dev/null | grep -q "ui-probe"; then
 fi
 
 # Add to Claude
-echo "📝 Adding ui-probe to Claude Desktop..."
+echo "📝 Adding ui-probe to Claude Code CLI..."
 echo "Running: claude mcp add ui-probe \"$NPX_PATH\" \"mcp-ui-probe@latest\" \"start\""
 claude mcp add ui-probe "$NPX_PATH" "mcp-ui-probe@latest" "start"
 
 if [ $? -eq 0 ]; then
     echo ""
-    echo "✅ Success! UI-Probe has been added to Claude Desktop."
+    echo "✅ Success! UI-Probe has been added to Claude Code CLI."
     echo ""
     echo "Next steps:"
-    echo "1. Restart Claude Desktop"
-    echo "2. Look for 'ui-probe' in the MCP tools list"
+    echo "1. Start Claude Code CLI: claude"
+    echo "2. Check MCP status: claude mcp list"
     echo "3. Test with: npx mcp-ui-probe test-server"
     echo ""
     echo "If you see 'Failed to connect' in Claude:"
-    echo "  - Make sure Claude Desktop is fully restarted"
+    echo "  - Start a new Claude session"
     echo "  - Check that Node.js is properly installed"
 else
     echo ""
