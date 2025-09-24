@@ -526,6 +526,44 @@ When developers change:
 ✅ UI-Probe: "The submit button is hidden behind a cookie consent banner. Try dismissing the banner first."
 ```
 
+## Response Structure
+
+All MCP UI-Probe tools return deterministic, structured JSON responses that enable conditional logic and automation:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Operation success status |
+| `data` | object | Tool-specific response data |
+| `error` | string | Error message (when success=false) |
+
+**Example Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "clicked": true,
+    "selector": "button:has-text(\"Submit\")",
+    "currentUrl": "http://example.com/success",
+    "pageTitle": "Success Page"
+  }
+}
+```
+
+This deterministic structure enables intelligent automation:
+```javascript
+const result = await ui_probe.click_button({ text: "Submit" });
+if (result.success) {
+  // Continue with success flow
+  console.log(`Navigated to: ${result.data.currentUrl}`);
+} else {
+  // Handle failure with specific error
+  console.log(`Failed: ${result.error}`);
+  // Try alternative approach
+}
+```
+
+📖 **See [Full Response Documentation](docs/RESPONSE_STRUCTURE.md)** for comprehensive details on all response types.
+
 ## API Reference
 
 | Command | What it does | Example |
@@ -534,9 +572,11 @@ When developers change:
 | `analyze_ui` | See what's on the page | `analyze_ui "https://site.com"` |
 | `fill_form` | Fill out a form | `fill_form "URL" {"field": "value"}` |
 | `run_flow` | Do multiple steps | `run_flow "Sign up and verify email"` |
-| `click` | Click something | `click "URL" "button text"` |
+| `click_button` | Click a button | `click_button { text: "Submit" }` |
 | `assert_element` | Check if something exists | `assert_element "URL" "text" "visible"` |
 | `wait_for` | Wait for something | `wait_for "URL" "Loading..." "hidden"` |
+
+📖 **See [Complete API Reference](docs/API_REFERENCE.md)** for detailed parameters and response structures.
 
 ## Comparison with playwright-mcp
 

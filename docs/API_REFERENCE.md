@@ -304,6 +304,48 @@ const flowResult = await mcpClient.call('run_flow', {
 
 ---
 
+### click_button
+
+Click a button or link on the page by its text content.
+
+**Parameters:**
+- `text` (string, optional): Button text to search for (exact or partial match)
+- `selector` (string, optional): CSS selector for the button (used if text not provided)
+- `waitForNavigation` (boolean, optional): Wait for navigation after click (default: true)
+
+**Returns:**
+```json
+{
+  "success": true,
+  "data": {
+    "clicked": true,
+    "selector": "button:has-text(\"Submit Form\")",
+    "currentUrl": "http://localhost:8083/test/success",
+    "pageTitle": "Success - UI-Probe"
+  }
+}
+```
+
+**Example:**
+```javascript
+// Click by text
+const result = await mcpClient.call('click_button', {
+  text: 'Submit',
+  waitForNavigation: true
+});
+
+// Click by selector
+const result = await mcpClient.call('click_button', {
+  selector: '#submit-btn',
+  waitForNavigation: false
+});
+
+console.log(`Clicked: ${result.data.clicked}`);
+console.log(`New URL: ${result.data.currentUrl}`);
+```
+
+---
+
 ### assert_selectors
 
 Validate that specific selectors exist and meet criteria.
