@@ -1,12 +1,213 @@
-# MCP UI Probe Test Response Structure Report
+# MCP UI Probe Response Structure Documentation
 
 ## 1. Introduction
 
-This report provides a comprehensive overview of the JSON response structure returned by the MCP UI Probe after executing a test, particularly through the `run_flow` or `fill_and_submit` commands. The response is designed to offer a detailed, multi-layered account of the test execution, from a high-level summary down to individual actions and errors.
+MCP UI Probe provides two distinct types of responses:
 
-## 2. Top-Level Response Structure
+1. **Simple Tool Responses** - Returned by individual tool commands like `navigate`, `analyze_ui`, `click_button`, etc.
+2. **Complex Test Execution Responses** - Returned by comprehensive test commands like `run_flow` and `fill_and_submit`
 
-The root of the JSON response object contains the following key fields:
+This document covers both response types to help developers understand the deterministic JSON structures returned by all MCP UI Probe tools.
+
+---
+
+## 2. Simple Tool Responses
+
+### 2.1 Basic Structure
+
+All simple tool commands return a consistent structure:
+
+```json
+{
+  "success": boolean,
+  "data": object,     // Tool-specific response data
+  "error": string     // Present only when success=false
+}
+```
+
+### 2.2 Tool-Specific Response Examples
+
+#### navigate
+Navigates to a URL and waits for page load.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "url": "http://localhost:8083/test",
+    "currentUrl": "http://localhost:8083/test"  // May differ if redirected
+  }
+}
+```
+
+#### analyze_ui
+Analyzes the current page UI structure.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "forms": [
+      {
+        "name": "signup",
+        "selector": "#signup-form",
+        "fields": [
+          {
+            "name": "email",
+            "type": "email",
+            "selector": "#email",
+            "required": true
+          }
+        ]
+      }
+    ],
+    "buttons": [
+      {
+        "type": "button",
+        "selector": "#submit-btn",
+        "text": "Submit"
+      }
+    ],
+    "inputs": [...],
+    "roles": [...],
+    "landmarks": [...]
+  }
+}
+```
+
+#### click_button
+Clicks a button or link on the page.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "clicked": true,
+    "selector": "button:has-text(\"Submit\")",
+    "currentUrl": "http://localhost:8083/test/success",
+    "pageTitle": "Success - UI-Probe"
+  }
+}
+```
+
+#### infer_form
+Infers form structure and purpose.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "formSchema": {
+      "name": "signup",
+      "selector": "#signup-form",
+      "fields": [...],
+      "submit": {
+        "selector": "button[type='submit']",
+        "text": "Sign Up"
+      }
+    },
+    "confidence": 0.87
+  }
+}
+```
+
+#### assert_selectors
+Validates element presence and properties.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "pass": true,
+    "failures": [],
+    "summary": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0
+    }
+  }
+}
+```
+
+#### collect_errors
+Collects errors from the current page.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "errors": [
+      {
+        "type": "validation",
+        "message": "Email is required",
+        "selector": "#email",
+        "code": "E_VALIDATION_REQUIRED"
+      }
+    ],
+    "summary": {
+      "total": 1,
+      "console": 0,
+      "network": 0,
+      "validation": 1
+    }
+  }
+}
+```
+
+#### verify_page
+Verifies page content and checks for errors.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "isValid": true,
+    "title": "Sign Up - UI-Probe",
+    "url": "http://localhost:8083/signup",
+    "checks": {
+      "expectedContent": true,
+      "unexpectedContent": false,
+      "titleMatch": true,
+      "urlMatch": true
+    }
+  }
+}
+```
+
+### 2.3 Error Response Structure
+
+When any tool encounters an error:
+
+```json
+{
+  "success": false,
+  "error": "Element not found: No button with text 'Submit' found on page"
+}
+```
+
+Common error scenarios:
+- Element not found
+- Navigation timeout
+- Network failure
+- Invalid selector
+- Page not loaded
+
+---
+
+## 3. Complex Test Execution Responses
+
+The following section describes the comprehensive response structure returned by `run_flow` and `fill_and_submit` commands.
+
+### 3.1 Top-Level Structure
+
+Complex test execution responses from `run_flow` and `fill_and_submit` contain:
 
 | Key | Type | Description |
 |---|---|---|
@@ -18,23 +219,21 @@ The root of the JSON response object contains the following key fields:
 | `result` | String | The final, high-level outcome of the test. |
 | `metrics` | Object | A summary of performance and execution metrics for the test run. |
 
----
+### 3.2 Detailed Field Descriptions
 
-## 3. Detailed Field Descriptions
-
-### 3.1. `runId`
+#### 3.2.1 `runId`
 A UUID string that uniquely identifies the test run. This is useful for tracking and referencing specific test executions in logs or reporting systems.
 
 **Example:** `"runId": "a1b2c3d4-e5f6-7890-1234-567890abcdef"`
 
-### 3.2. `target`
+#### 3.2.2 `target`
 An object describing the test environment.
 
 - **`url`** (String): The URL of the page where the test was executed.
 - **`viewport`** (String): The dimensions of the browser viewport (e.g., "1280x800").
 - **`userAgent`** (String): The User-Agent string of the browser used for the test.
 
-### 3.3. `flow`
+#### 3.2.3 `flow`
 This is an array of `TestStep` objects, which together form a chronological narrative of the test. Each object represents a single action taken by the probe.
 
 #### `TestStep` Object Structure
@@ -48,13 +247,13 @@ This is an array of `TestStep` objects, which together form a chronological narr
 - **`timestamp`** (String): An ISO 8601 timestamp of when the step was executed.
 - **`artifacts`** (Object, optional): A collection of supplementary materials captured during the step, such as paths to screenshots (`screenshot`) or logs (`console`, `network`).
 
-### 3.4. `findings`
+#### 3.2.4 `findings`
 An object containing data and analysis gathered about the page.
 
 - **`forms`** (Array): A list of form elements discovered on the page, including their fields and structure.
 - **`accessibility`** (Object): A summary of accessibility audit results, often from tools like Axe. It includes violation counts and details.
 
-### 3.5. `errors`
+#### 3.2.5 `errors`
 A crucial array of `TestError` objects. If this array is empty, no errors were officially logged.
 
 #### `TestError` Object Structure
@@ -69,13 +268,13 @@ A crucial array of `TestError` objects. If this array is empty, no errors were o
     - `url`, `status`: Details for network errors.
 - **`timestamp`** (String): An ISO 8601 timestamp of when the error was detected.
 
-### 3.6. `result`
+#### 3.2.6 `result`
 A string that provides the final, overall status of the test. Possible values are:
 - **`passed`**: The test completed successfully with no errors.
 - **`passed_with_warnings`**: The test completed, but non-critical issues (like console warnings) were detected.
 - **`failed`**: The test did not complete as expected due to one or more errors.
 
-### 3.7. `metrics`
+#### 3.2.7 `metrics`
 An object summarizing key metrics from the test run.
 
 - **`totalTimeMs`** (Number): The total time for the entire test, in milliseconds.
@@ -85,7 +284,7 @@ An object summarizing key metrics from the test run.
 
 ---
 
-## 4. Full JSON Response Example
+### 3.3 Full JSON Response Example
 
 The following is a complete example illustrating the structure described above.
 
@@ -151,6 +350,62 @@ The following is a complete example illustrating the structure described above.
 }
 ```
 
+## 4. Using Response Types Effectively
+
+### 4.1 Choosing the Right Tool
+
+**Use Simple Tools When:**
+- You need granular control over individual actions
+- Building custom test flows with conditional logic
+- Debugging specific UI interactions
+- Need immediate feedback for each step
+
+**Use Complex Test Commands When:**
+- Running complete end-to-end tests
+- Need comprehensive metrics and reporting
+- Want automatic error collection and analysis
+- Require detailed test execution artifacts
+
+### 4.2 Conditional Logic Example
+
+With simple tools, you can implement conditional flows:
+
+```javascript
+// Navigate to page
+const navResult = await mcpClient.call('navigate', { url: 'http://localhost:8083/test' });
+
+if (navResult.success) {
+  // Analyze the page
+  const analysis = await mcpClient.call('analyze_ui');
+
+  // Check if specific form exists
+  const hasSignupForm = analysis.data.forms.some(f => f.name === 'signup');
+
+  if (hasSignupForm) {
+    // Infer and fill the form
+    const inference = await mcpClient.call('infer_form', { goal: 'signup' });
+
+    if (inference.data.confidence > 0.7) {
+      const fillResult = await mcpClient.call('fill_and_submit', {
+        formSchema: inference.data.formSchema
+      });
+
+      // Check the comprehensive result
+      if (fillResult.result === 'passed') {
+        console.log('✅ Test passed successfully');
+      }
+    }
+  }
+}
+```
+
 ## 5. Conclusion
 
-The MCP UI Probe's test response is a rich, structured JSON object that provides a comprehensive record of a test run. It is designed for both human and machine readability, enabling detailed analysis of test outcomes, performance, and errors. The structure facilitates easy integration into CI/CD pipelines, custom dashboards, and automated reporting systems.
+MCP UI Probe provides deterministic JSON responses across all tools, enabling:
+
+1. **Predictable Automation** - Consistent response structures allow reliable conditional logic
+2. **No Code Generation** - Direct tool calls without writing Playwright scripts
+3. **Flexible Testing** - Choose between simple tools for control or complex commands for comprehensive testing
+4. **Easy Integration** - JSON responses integrate seamlessly with CI/CD pipelines and test frameworks
+
+The dual response structure design balances simplicity for individual operations with comprehensive data for complete test executions.

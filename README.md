@@ -528,7 +528,10 @@ When developers change:
 
 ## Response Structure
 
-All MCP UI-Probe tools return deterministic, structured JSON responses that enable conditional logic and automation:
+MCP UI-Probe provides two types of deterministic JSON responses:
+
+### Simple Tool Responses
+Individual tool commands (`navigate`, `click_button`, `analyze_ui`, etc.) return:
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -536,7 +539,7 @@ All MCP UI-Probe tools return deterministic, structured JSON responses that enab
 | `data` | object | Tool-specific response data |
 | `error` | string | Error message (when success=false) |
 
-**Example Response:**
+**Example:**
 ```json
 {
   "success": true,
@@ -549,20 +552,33 @@ All MCP UI-Probe tools return deterministic, structured JSON responses that enab
 }
 ```
 
+### Complex Test Execution Responses
+Comprehensive test commands (`run_flow`, `fill_and_submit`) return detailed reports with:
+- Complete test execution flow with all steps
+- Performance metrics and timings
+- Error collection and categorization
+- Accessibility findings
+- Test artifacts and evidence
+
 This deterministic structure enables intelligent automation:
 ```javascript
+// Simple tool for conditional logic
 const result = await ui_probe.click_button({ text: "Submit" });
 if (result.success) {
-  // Continue with success flow
   console.log(`Navigated to: ${result.data.currentUrl}`);
 } else {
-  // Handle failure with specific error
   console.log(`Failed: ${result.error}`);
-  // Try alternative approach
 }
+
+// Complex command for full test execution
+const testResult = await ui_probe.run_flow({
+  goal: "Complete signup process",
+  url: "http://example.com/signup"
+});
+console.log(`Test ${testResult.result}: ${testResult.metrics.steps} steps`)
 ```
 
-📖 **See [Full Response Documentation](docs/RESPONSE_STRUCTURE.md)** for comprehensive details on all response types.
+📖 **See [Full Response Documentation](docs/RESPONSE_STRUCTURE.md)** for comprehensive details on both simple and complex response types.
 
 ## API Reference
 
