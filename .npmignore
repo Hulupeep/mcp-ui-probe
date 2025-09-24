@@ -1,0 +1,39 @@
+# Source files
+src/
+tests/
+docs/
+
+# Development files
+.git/
+.github/
+.vscode/
+*.log
+*.tsbuildinfo
+.env
+.env.local
+
+# Test files
+coverage/
+jest.config.js
+*.test.ts
+*.spec.ts
+
+# Build files
+tsconfig.json
+.eslintrc
+.prettierrc
+
+# Claude Flow files
+.claude-flow/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Keep dist folder for npm
+!dist/

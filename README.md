@@ -68,11 +68,23 @@ UI-Probe gives you:
 - Node.js 18+ ([Download](https://nodejs.org) - just click "Next" through installer)
 - Claude Code CLI or any terminal
 
-### Step 1: Install UI-Probe
+### Option 1: Use with npx (Easiest)
+
+```bash
+# No installation needed! Just run:
+npx mcp-ui-probe setup         # First time only - installs Playwright browsers
+npx mcp-ui-probe test-server   # Start test playground
+npx mcp-ui-probe start         # Start MCP server
+
+# Add to Claude:
+claude mcp add ui-probe "npx mcp-ui-probe start"
+```
+
+### Option 2: Install from Source
 
 ```bash
 # Clone it (this downloads the code)
-git clone https://github.com/yourusername/mcp-ui-probe.git
+git clone https://github.com/Hulupeep/mcp-ui-probe.git
 cd mcp-ui-probe
 
 # Install it (this sets everything up)
@@ -80,15 +92,9 @@ npm install
 
 # CRITICAL: Install browsers (one-time, takes 2-3 minutes)
 npx playwright install
-```
 
-### Step 2: Add to Claude
-
-```bash
-# Tell Claude about UI-Probe
+# Add to Claude:
 claude mcp add ui-probe "node" "/path/to/mcp-ui-probe/dist/index.js"
-
-# Restart Claude to load it
 ```
 
 ### Step 3: Enable AI (Optional but Recommended)
