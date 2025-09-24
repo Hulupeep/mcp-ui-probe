@@ -6,13 +6,37 @@ Website testing is broken. You write hundreds of lines of code that breaks the m
 
 ## The Solution
 
+**UI-Probe** is an **assistant-first, Claude/MCP-native web app tester**.
+
 UI-Probe lets you test websites by describing what you want to do in plain English. No code. No selectors. Just describe it like you'd tell a human.
 
 ## ⚡ Not the First, But a Different Take
 
-There are plenty of codeless/AI test tools already — people have wrapped LLMs on top of Playwright, Selenium, or built full SaaS products like Testim, Mabl, and Rainforest. I've tried a bunch. They either felt too heavy, too enterprise, or still broke when the DOM shifted.
+Tools like **Testim**, **Mabl**, and **Rainforest QA** already bring codeless/AI testing to market. They’re powerful, but often **enterprise-heavy, SaaS-locked, and tuned for QA engineers**.
 
-UI-Probe is my wedge: **Claude/MCP-native**, **beginner-friendly**, and **open-source**. I wanted something I could spin up in minutes, hand to a PM or designer with no coding background, and still trust it to run the flow like a human would. That's what I built.
+**UI-Probe takes a different path:**
+
+- **Assistant-first** → Runs natively inside Claude via MCP. You just talk to your assistant and watch it work.
+- **Plain English by default** → No scripts, no recorders. Just tell it what you want tested.
+- **Beginner-friendly** → PMs, designers, and non-devs can use it right away.
+- **Open-source + lightweight** → Clone, run, hack. No vendor lock-in.
+- **From testing → to doing** → Today: check your web flows. Tomorrow: actually run them.
+
+### From Testing → to Doing
+
+UI-Probe doesn’t stop at testing. The same way you say:
+
+- “✅ Test if users can sign up”
+
+…you can also say:
+
+- “✅ Actually sign me up for an account”
+- “✅ Buy a blue shirt from the shop”
+- “✅ Order me a ham + mustard sandwich from sandwich.com and deliver it”
+
+So what starts as a **QA helper** can also become your **personal web agent** — able to test, repeat, and even perform real tasks for you.
+
+UI Probe is not just testing — it's a **universal intention layer for the web**  made simple.
 
 ### What Makes UI-Probe Different
 
@@ -68,7 +92,13 @@ UI-Probe gives you:
 - Node.js 18+ ([Download](https://nodejs.org) - just click "Next" through installer)
 - Claude Code CLI or any terminal
 
-### Option 1: Use with npx (Easiest)
+### System Requirements
+- **OS**: Windows, macOS, or Linux
+- **Node.js**: Version 18 or higher
+- **Disk Space**: ~500MB for Playwright browsers (one-time download)
+- **RAM**: 2GB minimum, 4GB recommended
+
+### Option 1: Use with npx (Easiest - Works Everywhere!)
 
 ```bash
 # No installation needed! Just run:

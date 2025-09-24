@@ -4,9 +4,19 @@ import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
+import { platform } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Check for Node.js version
+const nodeVersion = process.version;
+const majorVersion = parseInt(nodeVersion.split('.')[0].substring(1));
+if (majorVersion < 18) {
+  console.error('❌ Error: Node.js 18+ is required. You have', nodeVersion);
+  console.error('Please update Node.js: https://nodejs.org');
+  process.exit(1);
+}
 
 const args = process.argv.slice(2);
 
@@ -85,10 +95,36 @@ function startMonitoring() {
 }
 
 function runSetup() {
-  console.log('Installing Playwright browsers...');
-  const child = spawn('npx', ['playwright', 'install'], {
+  console.log('📦 Checking Playwright installation...');
+
+  // Check if Playwright browsers are already installed
+  const playwrightPath = join(process.env.HOME || process.env.USERPROFILE || '', '.cache', 'ms-playwright');
+  const browsersExist = existsSync(playwrightPath);
+
+  if (browsersExist) {
+    console.log('✅ Playwright browsers already installed!');
+    console.log('\nNext steps:');
+    console.log('1. Configure Claude to use UI-Probe:');
+    console.log('   claude mcp add ui-probe "npx mcp-ui-probe start"');
+    console.log('\n2. Test it with:');
+    console.log('   npx mcp-ui-probe test-server');
+    return;
+  }
+
+  console.log('Installing Playwright browsers (one-time setup, ~500MB)...');
+  console.log('This may take a few minutes...');
+
+  const npmCmd = platform() === 'win32' ? 'npx.cmd' : 'npx';
+  const child = spawn(npmCmd, ['playwright', 'install', 'chromium'], {
     stdio: 'inherit',
-    shell: true
+    shell: platform() === 'win32'
+  });
+
+  child.on('error', (err) => {
+    console.error('❌ Failed to run Playwright install:', err.message);
+    console.error('\nTry running manually:');
+    console.error('   npx playwright install chromium');
+    process.exit(1);
   });
 
   child.on('close', (code) => {
@@ -101,6 +137,8 @@ function runSetup() {
       console.log('   npx mcp-ui-probe test-server');
     } else {
       console.error('❌ Setup failed with code', code);
+      console.error('\nTry running manually:');
+      console.error('   npx playwright install chromium');
       process.exit(1);
     }
   });
