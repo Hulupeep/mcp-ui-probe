@@ -46,6 +46,28 @@ UI Probe is not just testing — it's a **universal intention layer for the web*
 - **Actually works for non-devs** - PMs, designers, QA can use it immediately
 - **Open source** - No vendor lock-in, customize as needed
 - **Semantic AI Resolution** - Smart hybrid that uses Playwright's semantic selectors first, then falls back to LLM intelligence only when needed. This means your tests find "Technology" checkboxes even when `value="tech"`, without burning API calls on simple matches
+- **No Code Required** - Unlike raw Playwright MCP where Claude must write test scripts, UI-Probe works immediately without any programming
+- **Deterministic JSON Responses** - Every action returns structured JSON that enables conditional logic and automation:
+
+```json
+{
+  "success": true,
+  "data": {
+    "clicked": true,
+    "selector": "button:has-text(\"Submit Form\")",
+    "currentUrl": "http://localhost:8083/test/forms",
+    "pageTitle": "Forms Testing - UI-Probe"
+  }
+}
+```
+
+This means you can build intelligent workflows:
+```bash
+# If form submission fails, try alternative flow
+if response.success == false:
+  navigate to backup_url
+  retry with different_data
+```
 
 ```bash
 # Instead of this nightmare:
@@ -534,6 +556,47 @@ When developers change:
 | **Self-Healing** | No - breaks if DOM changes | Yes - uses AI to adapt to changes |
 | **Test Data** | User must provide | Auto-generates valid data |
 | **Setup** | Single npx command | Clone repo + npm install |
+| **Code Required** | Yes - Claude writes test scripts | No - works immediately |
+| **Response Format** | Raw browser events | Structured JSON for automation |
+
+### Critical Advantage: No Code Generation Required
+
+With **playwright-mcp**, Claude must write and execute test code:
+```javascript
+// Claude has to generate this for every test
+await page.goto('http://example.com');
+await page.fill('#email', 'test@example.com');
+await page.click('button[type="submit"]');
+// Error handling, retries, validation...
+```
+
+With **UI-Probe**, just describe what you want:
+```bash
+"Test the login form"
+# That's it - no code generation needed
+```
+
+### Deterministic JSON for Automation
+
+Every UI-Probe action returns predictable JSON that enables conditional logic:
+
+```javascript
+// UI-Probe response - always structured the same way
+{
+  "success": true,
+  "data": {
+    "formSubmitted": true,
+    "validationErrors": [],
+    "nextUrl": "/dashboard"
+  }
+}
+
+// This enables intelligent automation:
+if (!response.success) {
+  // Handle failure automatically
+  useAlternativeFlow();
+}
+```
 
 ### The Bottom Line
 
