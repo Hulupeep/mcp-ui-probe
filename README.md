@@ -105,10 +105,48 @@ UI-Probe gives you:
 npx mcp-ui-probe setup         # First time only - installs Playwright browsers
 npx mcp-ui-probe test-server   # Start test playground
 npx mcp-ui-probe start         # Start MCP server
-
-# Add to Claude:
-claude mcp add ui-probe "npx mcp-ui-probe start"
 ```
+
+#### ⚠️ Important: Adding to Claude Desktop
+
+Claude Desktop needs the FULL PATH to npx (not just "npx").
+
+**Automatic Setup (Recommended):**
+```bash
+# Download and run the setup script
+curl -sSL https://raw.githubusercontent.com/Hulupeep/mcp-ui-probe/main/scripts/claude-setup.sh | bash
+```
+
+**Or Manual Setup:**
+
+**Step 1: Find your npx path**
+```bash
+# On macOS/Linux:
+which npx
+# Example output: /usr/local/bin/npx or ~/.nvm/versions/node/v20.11.0/bin/npx
+
+# On Windows:
+where npx
+# Example output: C:\Program Files\nodejs\npx.cmd
+```
+
+**Step 2: Add to Claude with the full path**
+```bash
+# Use YOUR path from Step 1:
+claude mcp add ui-probe "/full/path/to/npx" "mcp-ui-probe@latest" "start"
+
+# Real examples:
+# Standard Node:
+claude mcp add ui-probe "/usr/local/bin/npx" "mcp-ui-probe@latest" "start"
+
+# Using NVM:
+claude mcp add ui-probe "$HOME/.nvm/versions/node/v22.11.0/bin/npx" "mcp-ui-probe@latest" "start"
+
+# Windows:
+claude mcp add ui-probe "C:\Program Files\nodejs\npx.cmd" "mcp-ui-probe@latest" "start"
+```
+
+**Step 3: Restart Claude Desktop**
 
 ### Option 2: Install from Source
 
@@ -127,7 +165,11 @@ npx playwright install
 claude mcp add ui-probe "node" "/path/to/mcp-ui-probe/dist/index.js"
 ```
 
-### Step 3: Enable AI (Optional but Recommended)
+### Step 3: Add to Claude Desktop
+
+See detailed instructions above in Option 1.
+
+### Step 4: Enable AI (Optional but Recommended)
 
 ```bash
 # In the mcp-ui-probe folder
@@ -136,7 +178,7 @@ echo "OPENAI_API_KEY=your-key-here" > .env
 
 This makes UI-Probe smarter at understanding your commands.
 
-### Step 4: Test Something!
+### Step 5: Test Something!
 
 ```bash
 # In Claude, just describe what you want:
@@ -312,6 +354,44 @@ SCREENSHOT_ON_FAILURE=true
 ```
 
 ## Troubleshooting
+
+### "Failed to connect" or "Connection failed" in Claude Desktop
+
+**Problem:** Claude shows ui-probe as "failed" or can't connect.
+
+**Solution:** Claude needs the full path to npx, not just "npx".
+
+1. **Find your npx location:**
+   ```bash
+   which npx  # Mac/Linux
+   where npx  # Windows
+   ```
+
+2. **Remove the broken configuration:**
+   ```bash
+   claude mcp remove ui-probe
+   ```
+
+3. **Add with the full path:**
+   ```bash
+   # Use YOUR actual path from step 1
+   claude mcp add ui-probe "/path/from/step1/npx" "mcp-ui-probe@latest" "start"
+   ```
+
+4. **Restart Claude Desktop**
+
+**Common npx locations:**
+- Standard Node.js: `/usr/local/bin/npx`
+- NVM (Node Version Manager): `~/.nvm/versions/node/vXX.XX.X/bin/npx`
+- Homebrew (Mac): `/opt/homebrew/bin/npx`
+- Windows: `C:\Program Files\nodejs\npx.cmd`
+
+### "Port already in use" when starting test server
+
+**Solution:** Use a different port:
+```bash
+npx mcp-ui-probe test-server --port 3000
+```
 
 ### "Navigation failed"
 The site can't be reached. Check:
