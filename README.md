@@ -88,6 +88,13 @@ UI-Probe gives you:
 
 ## Quick Start (5 Minutes)
 
+### 🎯 TL;DR - Get Running in 3 Commands
+```bash
+npx mcp-ui-probe setup                                                      # 1. Install browsers (one-time)
+curl -sSL https://raw.githubusercontent.com/Hulupeep/mcp-ui-probe/main/scripts/claude-setup.sh | bash  # 2. Connect to Claude
+claude                                                                       # 3. Start using!
+```
+
 ### Prerequisites
 - Node.js 18+ ([Download](https://nodejs.org) - just click "Next" through installer)
 - Claude Code CLI or any terminal
@@ -100,19 +107,13 @@ UI-Probe gives you:
 
 ### Option 1: Use with npx (Easiest - Works Everywhere!)
 
-**Two quick steps:**
-1. ✅ **Test the tool** (works immediately)
-2. 🔧 **Connect to Claude** (one-time setup)
-
-#### Step 1: Test UI-Probe Right Now
+#### Step 1: Initial Setup (One-Time Only)
 ```bash
-# No installation needed! Just run:
-npx mcp-ui-probe setup         # First time only - installs Playwright browsers
-npx mcp-ui-probe test-server   # Start test playground (visit http://localhost:8081/test)
-npx mcp-ui-probe start         # Start MCP server (for testing the protocol)
+# Install Playwright browsers needed for web testing (~500MB, takes 2-3 minutes)
+npx mcp-ui-probe setup
 ```
 
-#### Step 2: Connect to Claude (One-Time Setup)
+#### Step 2: Connect to Claude Code CLI
 
 **Why this extra step?** Claude Code CLI can't find `npx` by itself because it doesn't have access to your shell's PATH. You need to tell Claude exactly where npx is located on your computer.
 
@@ -156,9 +157,31 @@ claude mcp add ui-probe "$HOME/.nvm/versions/node/v22.11.0/bin/npx" "mcp-ui-prob
 claude mcp add ui-probe "C:\Program Files\nodejs\npx.cmd" "mcp-ui-probe@latest" "start"
 ```
 
-**Step 3: Restart Claude Code CLI**
+#### Step 3: Start Using UI-Probe in Claude!
 
-The MCP server will be available next time you start Claude Code.
+```bash
+# Start Claude Code CLI
+claude
+
+# UI-Probe tools are now available! Try:
+# - Navigate to websites
+# - Analyze page elements
+# - Fill and submit forms
+# - Run complete test flows
+```
+
+#### Step 4: (Optional) Try the Test Playground
+
+Want to see UI-Probe in action before testing your own sites?
+
+```bash
+# Start the built-in test server with example forms
+npx mcp-ui-probe test-server   # Runs on http://localhost:8081/test
+npx mcp-ui-probe test-server --port 3000   # Use custom port if 8081 is busy
+
+# Visit http://localhost:8081/test in your browser to see the playground
+# Then in Claude, try: run_flow "Sign up as new user" "http://localhost:8081/test"
+```
 
 ### Option 2: Install from Source
 
@@ -177,16 +200,18 @@ npx playwright install
 claude mcp add ui-probe "node" "/path/to/mcp-ui-probe/dist/index.js"
 ```
 
-### Step 3: Enable AI (Optional but Recommended)
+### Enable AI Intelligence (Optional)
+
+Want UI-Probe to be even smarter at understanding pages?
 
 ```bash
-# In the mcp-ui-probe folder
+# In the mcp-ui-probe folder (if installed from source)
 echo "OPENAI_API_KEY=your-key-here" > .env
 ```
 
-This makes UI-Probe smarter at understanding your commands.
+This enables advanced AI features for better form understanding and error messages.
 
-### Step 4: Test Something!
+### Start Testing!
 
 ```bash
 # In Claude, just describe what you want:
