@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.TEST_PORT || 8081;
+const PORT = process.env.PORT || process.env.TEST_PORT || 8081;
 
 // Middleware
 app.use(express.json());
@@ -50,8 +50,8 @@ app.get('/test/validation', (req, res) => {
   res.sendFile(path.join(__dirname, 'pages', 'validation.html'));
 });
 
-// Start server
-app.listen(PORT, () => {
+// Start server with error handling
+const server = app.listen(PORT, () => {
   console.log(`✅ Test server running at http://localhost:${PORT}`);
   console.log('');
   console.log('📚 Available test pages:');
@@ -64,4 +64,18 @@ app.listen(PORT, () => {
   console.log('🧪 Test in Claude with:');
   console.log(`   analyze_ui "http://localhost:${PORT}/test/forms"`);
   console.log(`   run_flow(goal="Sign up as new user", url="http://localhost:${PORT}/test")`);
+});
+
+// Handle server errors
+server.on('error', (err: any) => {
+  if (err.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use`);
+    console.error('Try one of these options:');
+    console.error('1. Stop the other service using this port');
+    console.error('2. Use a different port: npx mcp-ui-probe test-server --port 3000');
+    process.exit(1);
+  } else {
+    console.error('❌ Server error:', err);
+    process.exit(1);
+  }
 });

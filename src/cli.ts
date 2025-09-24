@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { existsSync } from 'fs';
 import { platform } from 'os';
+import * as net from 'net';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -31,7 +32,6 @@ switch (command) {
     break;
 
   case 'test-server':
-    console.log('🧪 Starting test server on http://localhost:3456...');
     startTestServer();
     break;
 
@@ -68,29 +68,97 @@ function startMCPServer() {
   });
 }
 
-function startTestServer() {
+async function startTestServer() {
+  const defaultPort = 8081;
+  const alternativePorts = [8082, 8083, 3456, 3457, 8090];
+
+  // Parse --port flag if provided
+  const portIndex = args.indexOf('--port');
+  let requestedPort = defaultPort;
+  if (portIndex !== -1 && args[portIndex + 1]) {
+    requestedPort = parseInt(args[portIndex + 1]);
+    if (isNaN(requestedPort)) {
+      console.error('❌ Invalid port number');
+      process.exit(1);
+    }
+  }
+
+  // Check if requested port is available
+  const availablePort = await findAvailablePort(requestedPort, alternativePorts);
+
+  if (!availablePort) {
+    console.error('❌ No available ports found. Please stop other services or specify a different port with --port');
+    process.exit(1);
+  }
+
+  if (availablePort !== requestedPort && portIndex !== -1) {
+    console.log(`⚠️  Port ${requestedPort} is in use`);
+  }
+
+  console.log(`🧪 Starting test server on http://localhost:${availablePort}...`);
+
   const testServerPath = join(__dirname, 'test-server', 'server.js');
   const child = spawn('node', [testServerPath], {
     stdio: 'inherit',
-    env: { ...process.env }
+    env: { ...process.env, PORT: availablePort.toString() }
   });
 
   child.on('error', (err) => {
     console.error('❌ Failed to start test server:', err);
     process.exit(1);
   });
+
+  // Handle graceful shutdown
+  process.on('SIGINT', () => {
+    child.kill();
+    process.exit(0);
+  });
 }
 
-function startMonitoring() {
+async function startMonitoring() {
+  const defaultPort = 3002;
+  const alternativePorts = [3003, 3004, 3005, 3456, 3457];
+
+  // Parse --port flag if provided
+  const portIndex = args.indexOf('--port');
+  let requestedPort = defaultPort;
+  if (portIndex !== -1 && args[portIndex + 1]) {
+    requestedPort = parseInt(args[portIndex + 1]);
+    if (isNaN(requestedPort)) {
+      console.error('❌ Invalid port number');
+      process.exit(1);
+    }
+  }
+
+  // Check if requested port is available
+  const availablePort = await findAvailablePort(requestedPort, alternativePorts);
+
+  if (!availablePort) {
+    console.error('❌ No available ports found. Please stop other services or specify a different port with --port');
+    process.exit(1);
+  }
+
+  if (availablePort !== requestedPort && portIndex !== -1) {
+    console.log(`⚠️  Port ${requestedPort} is in use`);
+  }
+
+  console.log(`📊 Starting monitoring dashboard on http://localhost:${availablePort}...`);
+
   const monitoringPath = join(__dirname, 'monitoring', 'server.js');
   const child = spawn('node', [monitoringPath], {
     stdio: 'inherit',
-    env: { ...process.env }
+    env: { ...process.env, PORT: availablePort.toString() }
   });
 
   child.on('error', (err) => {
     console.error('❌ Failed to start monitoring:', err);
     process.exit(1);
+  });
+
+  // Handle graceful shutdown
+  process.on('SIGINT', () => {
+    child.kill();
+    process.exit(0);
   });
 }
 
@@ -148,23 +216,72 @@ function showHelp() {
   console.log(`
 UI-Probe - Test Any Website in Plain English
 
-Usage: npx mcp-ui-probe [command]
+Usage: npx mcp-ui-probe [command] [options]
 
 Commands:
   start, server    Start the MCP server for Claude integration
-  test-server      Start the built-in test server (http://localhost:3456)
-  monitor          Start the monitoring dashboard (http://localhost:3002)
+  test-server      Start the built-in test server (default: port 8081)
+  monitor          Start the monitoring dashboard (default: port 3002)
   init, setup      Install dependencies and set up Playwright
   help             Show this help message
+
+Options:
+  --port <number>  Specify custom port for test-server or monitor commands
 
 Quick Start:
   1. npx mcp-ui-probe setup              # First time setup
   2. npx mcp-ui-probe test-server        # Start test environment
   3. npx mcp-ui-probe start              # Start MCP server
 
+Examples:
+  npx mcp-ui-probe test-server --port 3000   # Use custom port
+  npx mcp-ui-probe monitor --port 4000       # Use custom port
+
 For Claude integration, add to your Claude config:
   claude mcp add ui-probe "npx mcp-ui-probe start"
 
 Learn more: https://github.com/Hulupeep/mcp-ui-probe
 `);
+}
+
+// Helper function to check port availability
+async function findAvailablePort(preferredPort: number, alternatives: number[]): Promise<number | null> {
+  // First try the preferred port
+  if (await isPortAvailable(preferredPort)) {
+    return preferredPort;
+  }
+
+  // If preferred port is taken, show what's using it
+  console.log(`⚠️  Port ${preferredPort} is already in use`);
+
+  // Try alternative ports
+  for (const port of alternatives) {
+    if (await isPortAvailable(port)) {
+      console.log(`✅ Using alternative port ${port}`);
+      return port;
+    }
+  }
+
+  return null;
+}
+
+function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+
+    server.once('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        resolve(false);
+      } else {
+        resolve(false);
+      }
+    });
+
+    server.once('listening', () => {
+      server.close();
+      resolve(true);
+    });
+
+    server.listen(port, '0.0.0.0');
+  });
 }
