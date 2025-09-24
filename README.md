@@ -52,8 +52,12 @@ UI Probe is not just testing — it's a **universal intention layer for the web*
 await driver.findElement(By.xpath("//div[@id='login-form']//input[@name='email']")).sendKeys("test@example.com");
 await driver.findElement(By.css(".btn-submit.primary")).click();
 
-# Just say this:
-run_flow "Sign up for an account"
+# You can use natural language:
+"Test the signup form"
+
+# Or explicit commands when you need precision:
+fill_form {"email": "test@example.com"}
+click_button "Sign Up"
 ```
 
 ## For Complete Beginners
@@ -221,41 +225,62 @@ This enables advanced AI features for better form understanding and error messag
 run_flow "Go to https://example.com/signup and create an account"
 ```
 
-## How URLs Work in Claude
+## How UI-Probe Works in Claude
 
-Claude is smart about URLs:
+### Natural Language (Default - Just Talk Normally!)
+
+UI-Probe understands what you want to do:
 
 ```bash
-# Natural language - Claude figures it out:
-"Test the login on my homepage"
-"Check if the contact form works"
-"Sign up for a new account"
-
-# Explicit - when you need a specific URL:
-navigate "https://staging.myapp.com/login"
-fill_form "https://myapp.com/contact" {"message": "Hi!"}
+# Just describe what you want - UI-Probe figures it out:
+"Test if users can sign up on example.com"
+"Check if the checkout process works"
+"Fill out the contact form with test data"
+"Click the submit button"
 ```
 
-**Tip:** Start natural. If Claude asks "What URL?", then be specific.
+### Explicit Commands (When You Need Precise Control)
+
+Sometimes you need to be specific about exactly what to do:
+
+```bash
+# Use explicit commands for precise control:
+navigate "https://staging.myapp.com/login"           # Go to exact URL
+fill_form "https://myapp.com/contact" {"message": "Test"}  # Fill specific fields
+click_button "Submit Order"                          # Click exact button text
+assert_element "div.success" "visible"               # Check specific element
+```
+
+**Best Practice:** Start with natural language. If UI-Probe needs clarification or you need precise control, switch to explicit commands.
 
 ## Common Tasks
 
 ### Test a Login Form
 ```bash
-# Natural way:
-"Test if users can log in"
+# Natural language (recommended to start):
+"Test if users can log in to myapp.com"
+"Check the login flow"
 
-# Explicit way:
-run_flow "Go to https://myapp.com/login, enter test@example.com and password123, click login"
+# Explicit commands (for precise control):
+navigate "https://myapp.com/login"
+fill_form {"email": "test@example.com", "password": "password123"}
+click_button "Sign In"
+verify_page {"expectedContent": ["Dashboard", "Welcome"]}
 ```
 
 ### Test a Purchase
 ```bash
-# Natural:
-"Buy a blue shirt from the shop"
+# Natural language:
+"Buy a blue shirt from shop.com"
+"Test the checkout process with a test credit card"
 
-# Explicit:
-run_flow "Go to https://shop.com, search for blue shirt, add first result to cart, checkout with test card 4111111111111111"
+# Explicit commands:
+navigate "https://shop.com"
+click_button "Shirts"
+click_button "Blue Cotton Tee"
+click_button "Add to Cart"
+fill_form {"card": "4111111111111111", "exp": "12/25", "cvv": "123"}
+click_button "Complete Order"
 ```
 
 ### Test Form Validation
