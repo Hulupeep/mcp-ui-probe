@@ -92,16 +92,18 @@ UI-Probe gives you:
 
 ## Quick Start (5 Minutes)
 
-### 🎯 TL;DR - Get Running in 3 Commands
+### 🎯 TL;DR - Get Running Quickly
 ```bash
 npx mcp-ui-probe setup                                                      # 1. Install browsers (one-time)
-curl -sSL https://raw.githubusercontent.com/Hulupeep/mcp-ui-probe/main/scripts/claude-setup.sh | bash  # 2. Connect to Claude
-claude                                                                       # 3. Start using!
+echo "OPENAI_API_KEY=sk-..." > .env                                        # 2. Add API key (optional but recommended)
+curl -sSL https://raw.githubusercontent.com/Hulupeep/mcp-ui-probe/main/scripts/claude-setup.sh | bash  # 3. Connect to Claude
+claude                                                                       # 4. Start using!
 ```
 
 ### Prerequisites
 - Node.js 18+ ([Download](https://nodejs.org) - just click "Next" through installer)
 - Claude Code CLI or any terminal
+- OpenAI or Anthropic API key for best results (optional - works without but poorer performance)
 
 ### System Requirements
 - **OS**: Windows, macOS, or Linux
@@ -117,7 +119,24 @@ claude                                                                       # 3
 npx mcp-ui-probe setup
 ```
 
-#### Step 2: Connect to Claude Code CLI
+#### Step 2: Enable AI Intelligence (Optional but Recommended)
+
+For best results with intelligent form understanding, set your API key:
+
+```bash
+# Create a .env file in your current directory
+echo "OPENAI_API_KEY=your-key-here" > .env
+# OR for Anthropic
+echo "ANTHROPIC_API_KEY=your-key-here" > .env
+```
+
+**Note:** UI-Probe works without this, but AI features significantly improve:
+- Form field understanding
+- Error message clarity
+- Natural language processing
+- Smart element detection
+
+#### Step 3: Connect to Claude Code CLI
 
 **Why this extra step?** Claude Code CLI can't find `npx` by itself because it doesn't have access to your shell's PATH. You need to tell Claude exactly where npx is located on your computer.
 
@@ -161,7 +180,7 @@ claude mcp add ui-probe "$HOME/.nvm/versions/node/v22.11.0/bin/npx" "mcp-ui-prob
 claude mcp add ui-probe "C:\Program Files\nodejs\npx.cmd" "mcp-ui-probe@latest" "start"
 ```
 
-#### Step 3: Start Using UI-Probe in Claude!
+#### Step 4: Start Using UI-Probe in Claude!
 
 ```bash
 # Start Claude Code CLI
@@ -174,7 +193,7 @@ claude
 # - Run complete test flows
 ```
 
-#### Step 4: (Optional) Try the Test Playground
+#### Step 5: (Optional) Try the Test Playground
 
 Want to see UI-Probe in action before testing your own sites?
 
@@ -203,17 +222,6 @@ npx playwright install
 # Add to Claude:
 claude mcp add ui-probe "node" "/path/to/mcp-ui-probe/dist/index.js"
 ```
-
-### Enable AI Intelligence (Optional)
-
-Want UI-Probe to be even smarter at understanding pages?
-
-```bash
-# In the mcp-ui-probe folder (if installed from source)
-echo "OPENAI_API_KEY=your-key-here" > .env
-```
-
-This enables advanced AI features for better form understanding and error messages.
 
 ### Start Testing!
 
