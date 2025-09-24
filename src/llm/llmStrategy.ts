@@ -115,6 +115,35 @@ export class LLMStrategy {
     }
   }
 
+  /**
+   * Simple text completion for general purposes
+   */
+  async complete(prompt: string): Promise<string> {
+    try {
+      if (this.config.provider === 'openai' && this.openai) {
+        const completion = await this.openai.chat.completions.create({
+          model: this.config.model || 'gpt-4-turbo-preview',
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: this.config.maxTokens,
+          temperature: this.config.temperature
+        });
+
+        return completion.choices[0]?.message?.content || '';
+      }
+
+      // Fallback for when no LLM is configured
+      return '';
+    } catch (error) {
+      logger.warn('LLM completion failed', { error });
+      return '';
+    }
+  }
+
   async suggestAlternatives(failedSelector: string, pageContent: string): Promise<string[]> {
     if (!this.openai && !this.anthropic) {
       return this.getDefaultAlternatives(failedSelector);

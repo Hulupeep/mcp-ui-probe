@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Validation Testing - UI-Probe</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+    header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem 0; margin-bottom: 2rem; }
+    header h1 { text-align: center; }
+    .section { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+    .section h2 { color: #667eea; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1.5rem; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+    label.required::after { content: ' *'; color: #ef4444; }
+    input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+    input.error, select.error, textarea.error { border-color: #ef4444; background: #fef2f2; }
+    input.success, select.success, textarea.success { border-color: #10b981; background: #f0fdf4; }
+    .error-message { color: #ef4444; font-size: 0.875rem; margin-top: 0.25rem; display: none; }
+    .error-message.show { display: block; }
+    .success-message { color: #10b981; font-size: 0.875rem; margin-top: 0.25rem; display: none; }
+    .success-message.show { display: block; }
+    .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; transition: all 0.2s; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-primary:hover { background: #5a67d8; }
+    .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; }
+    .validation-summary { padding: 1rem; border-radius: 4px; margin-bottom: 1rem; display: none; }
+    .validation-summary.error { background: #fef2f2; border: 1px solid #ef4444; color: #991b1b; }
+    .validation-summary.success { background: #f0fdf4; border: 1px solid #10b981; color: #065f46; }
+    .validation-summary.show { display: block; }
+    .validation-summary ul { margin-left: 1.5rem; margin-top: 0.5rem; }
+    .password-strength { margin-top: 0.5rem; }
+    .password-strength-bar { height: 4px; background: #e5e7eb; border-radius: 2px; overflow: hidden; }
+    .password-strength-fill { height: 100%; transition: width 0.3s, background 0.3s; }
+    .password-strength-text { font-size: 0.875rem; margin-top: 0.25rem; }
+    .field-hint { color: #6b7280; font-size: 0.875rem; margin-top: 0.25rem; }
+    .checkbox-group { display: flex; align-items: center; margin-bottom: 1rem; }
+    .checkbox-group input { width: auto; margin-right: 0.5rem; }
+    .back-link { display: inline-block; margin-bottom: 1rem; color: #667eea; text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    .alert { padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+    .alert-error { background: #fef2f2; border: 1px solid #ef4444; color: #991b1b; }
+    .alert-warning { background: #fffbeb; border: 1px solid #f59e0b; color: #92400e; }
+    .alert-info { background: #eff6ff; border: 1px solid #3b82f6; color: #1e40af; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>✅ Validation Testing</h1>
+    </div>
+  </header>
+
+  <div class="container">
+    <a href="/test" class="back-link">← Back to Test Playground</a>
+
+    <!-- Client-side Validation -->
+    <div class="section">
+      <h2>Client-side Validation Form</h2>
+
+      <div id="validationSummary" class="validation-summary">
+        <strong>Please correct the following errors:</strong>
+        <ul id="errorList"></ul>
+      </div>
+
+      <form id="validationForm" novalidate>
+        <!-- Required Field -->
+        <div class="form-group">
+          <label for="username" class="required">Username</label>
+          <input type="text" id="username" name="username" required minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]+" placeholder="3-20 characters, letters/numbers/underscore only">
+          <span class="field-hint">Must be 3-20 characters, alphanumeric and underscore only</span>
+          <div class="error-message" id="username-error">Username is required and must be 3-20 characters</div>
+          <div class="success-message" id="username-success">✓ Username is valid</div>
+        </div>
+
+        <!-- Email Validation -->
+        <div class="form-group">
+          <label for="email" class="required">Email Address</label>
+          <input type="email" id="email" name="email" required placeholder="user@example.com">
+          <div class="error-message" id="email-error">Please enter a valid email address</div>
+          <div class="success-message" id="email-success">✓ Email is valid</div>
+        </div>
+
+        <!-- Password with Strength Meter -->
+        <div class="form-group">
+          <label for="password" class="required">Password</label>
+          <input type="password" id="password" name="password" required minlength="8" placeholder="Minimum 8 characters">
+          <div class="password-strength">
+            <div class="password-strength-bar">
+              <div id="strengthFill" class="password-strength-fill"></div>
+            </div>
+            <div id="strengthText" class="password-strength-text">Enter a password</div>
+          </div>
+          <div class="error-message" id="password-error">Password must be at least 8 characters</div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="form-group">
+          <label for="confirmPassword" class="required">Confirm Password</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Re-enter your password">
+          <div class="error-message" id="confirmPassword-error">Passwords do not match</div>
+          <div class="success-message" id="confirmPassword-success">✓ Passwords match</div>
+        </div>
+
+        <!-- Phone Number -->
+        <div class="form-group">
+          <label for="phone">Phone Number</label>
+          <input type="tel" id="phone" name="phone" pattern="[\d\s\-\+\(\)]+" placeholder="+1 (555) 123-4567">
+          <span class="field-hint">Optional: Include country code for international numbers</span>
+          <div class="error-message" id="phone-error">Please enter a valid phone number</div>
+        </div>
+
+        <!-- Age Range -->
+        <div class="form-group">
+          <label for="age" class="required">Age</label>
+          <input type="number" id="age" name="age" required min="18" max="120" placeholder="Must be 18 or older">
+          <div class="error-message" id="age-error">You must be at least 18 years old</div>
+        </div>
+
+        <!-- URL Validation -->
+        <div class="form-group">
+          <label for="website">Website</label>
+          <input type="url" id="website" name="website" placeholder="https://example.com">
+          <span class="field-hint">Optional: Include https:// or http://</span>
+          <div class="error-message" id="website-error">Please enter a valid URL</div>
+        </div>
+
+        <!-- Terms Checkbox -->
+        <div class="checkbox-group">
+          <input type="checkbox" id="terms" name="terms" required>
+          <label for="terms">I agree to the Terms and Conditions</label>
+        </div>
+        <div class="error-message" id="terms-error">You must accept the terms and conditions</div>
+
+        <button type="submit" class="btn btn-primary" id="submitBtn">Submit Form</button>
+      </form>
+    </div>
+
+    <!-- Edge Cases and Error States -->
+    <div class="section">
+      <h2>Edge Cases & Error States</h2>
+
+      <!-- Disabled Form -->
+      <div class="alert alert-warning">
+        <strong>Service Temporarily Unavailable</strong><br>
+        This form is disabled due to maintenance. Try again later.
+      </div>
+
+      <form id="disabledForm">
+        <div class="form-group">
+          <label for="disabledInput">Disabled Input</label>
+          <input type="text" id="disabledInput" disabled placeholder="This field is disabled">
+        </div>
+
+        <div class="form-group">
+          <label for="readonlyInput">Read-only Input</label>
+          <input type="text" id="readonlyInput" readonly value="This field is read-only">
+        </div>
+
+        <button type="submit" class="btn btn-primary" disabled>Submit (Disabled)</button>
+      </form>
+    </div>
+
+    <!-- Server-side Validation Simulation -->
+    <div class="section">
+      <h2>Server-side Validation</h2>
+
+      <form id="serverForm">
+        <div class="form-group">
+          <label for="couponCode" class="required">Coupon Code</label>
+          <input type="text" id="couponCode" name="couponCode" placeholder="Enter coupon code (try: SAVE20, INVALID)">
+          <span class="field-hint">Try SAVE20 for success, anything else for error</span>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Validate Coupon</button>
+
+        <div id="serverResponse" style="margin-top: 1rem;"></div>
+      </form>
+    </div>
+
+    <!-- Test Scenarios -->
+    <div class="section">
+      <h2>Test Scenarios</h2>
+
+      <div class="alert alert-info">
+        <strong>Try these validation scenarios:</strong>
+        <ul style="margin-top: 0.5rem;">
+          <li>Submit form with empty required fields</li>
+          <li>Enter invalid email format</li>
+          <li>Enter mismatched passwords</li>
+          <li>Enter age below 18</li>
+          <li>Test password strength meter with weak/strong passwords</li>
+          <li>Submit without accepting terms</li>
+          <li>Test server validation with different coupon codes</li>
+        </ul>
+      </div>
+
+      <h3>Test Commands</h3>
+      <pre style="background: #f3f4f6; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
+# Test form with invalid data
+fill_form "http://localhost:8081/test/validation" {
+  "username": "ab",  # Too short
+  "email": "invalid",  # Invalid format
+  "password": "123",  # Too short
+  "age": "16"  # Below minimum
+}
+
+# Test with valid data
+fill_form "http://localhost:8081/test/validation" {
+  "username": "john_doe",
+  "email": "john@example.com",
+  "password": "SecurePass123!",
+  "confirmPassword": "SecurePass123!",
+  "age": "25",
+  "terms": true
+}
+
+# Test validation messages
+run_flow(goal="Submit form with errors and verify error messages appear", url="http://localhost:8081/test/validation")
+
+# Test server validation
+fill_form "#serverForm" {"couponCode": "INVALID"}
+assert_selectors [{"selector": ".alert-error", "exists": true}]
+      </pre>
+    </div>
+  </div>
+
+  <script>
+    // Form validation
+    const form = document.getElementById('validationForm');
+    const inputs = form.querySelectorAll('input[required]');
+
+    // Real-time validation
+    inputs.forEach(input => {
+      input.addEventListener('blur', () => validateField(input));
+      input.addEventListener('input', () => {
+        if (input.classList.contains('error')) {
+          validateField(input);
+        }
+      });
+    });
+
+    function validateField(field) {
+      const errorMsg = document.getElementById(`${field.id}-error`);
+      const successMsg = document.getElementById(`${field.id}-success`);
+      let isValid = true;
+
+      // Reset states
+      field.classList.remove('error', 'success');
+      if (errorMsg) errorMsg.classList.remove('show');
+      if (successMsg) successMsg.classList.remove('show');
+
+      // Check required
+      if (field.hasAttribute('required') && !field.value.trim()) {
+        isValid = false;
+      }
+
+      // Check specific validations
+      switch (field.type) {
+        case 'email':
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (field.value && !emailRegex.test(field.value)) {
+            isValid = false;
+          }
+          break;
+
+        case 'tel':
+          if (field.value && field.pattern) {
+            const pattern = new RegExp(field.pattern);
+            if (!pattern.test(field.value)) {
+              isValid = false;
+            }
+          }
+          break;
+
+        case 'url':
+          try {
+            if (field.value) new URL(field.value);
+          } catch {
+            isValid = false;
+          }
+          break;
+
+        case 'number':
+          const num = parseInt(field.value);
+          if (field.min && num < parseInt(field.min)) isValid = false;
+          if (field.max && num > parseInt(field.max)) isValid = false;
+          break;
+      }
+
+      // Check pattern
+      if (field.pattern && field.value) {
+        const pattern = new RegExp(field.pattern);
+        if (!pattern.test(field.value)) {
+          isValid = false;
+        }
+      }
+
+      // Check min/max length
+      if (field.minLength && field.value.length < field.minLength) isValid = false;
+      if (field.maxLength && field.value.length > field.maxLength) isValid = false;
+
+      // Special case: confirm password
+      if (field.id === 'confirmPassword') {
+        const password = document.getElementById('password').value;
+        if (field.value !== password) {
+          isValid = false;
+        }
+      }
+
+      // Update UI
+      if (!isValid) {
+        field.classList.add('error');
+        if (errorMsg) errorMsg.classList.add('show');
+      } else if (field.value) {
+        field.classList.add('success');
+        if (successMsg) successMsg.classList.add('show');
+      }
+
+      return isValid;
+    }
+
+    // Password strength meter
+    const passwordInput = document.getElementById('password');
+    passwordInput.addEventListener('input', (e) => {
+      const password = e.target.value;
+      const strengthFill = document.getElementById('strengthFill');
+      const strengthText = document.getElementById('strengthText');
+
+      let strength = 0;
+      let color = '#ef4444';
+      let text = 'Very Weak';
+
+      if (password.length >= 8) strength++;
+      if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+      if (password.match(/[0-9]/)) strength++;
+      if (password.match(/[^a-zA-Z0-9]/)) strength++;
+      if (password.length >= 12) strength++;
+
+      switch (strength) {
+        case 0:
+        case 1:
+          color = '#ef4444';
+          text = 'Weak';
+          break;
+        case 2:
+          color = '#f59e0b';
+          text = 'Fair';
+          break;
+        case 3:
+          color = '#eab308';
+          text = 'Good';
+          break;
+        case 4:
+        case 5:
+          color = '#10b981';
+          text = 'Strong';
+          break;
+      }
+
+      strengthFill.style.width = `${(strength / 5) * 100}%`;
+      strengthFill.style.background = color;
+      strengthText.textContent = text;
+      strengthText.style.color = color;
+    });
+
+    // Form submission
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      const errors = [];
+      const validationSummary = document.getElementById('validationSummary');
+      const errorList = document.getElementById('errorList');
+
+      // Validate all fields
+      inputs.forEach(input => {
+        if (!validateField(input)) {
+          const label = form.querySelector(`label[for="${input.id}"]`);
+          errors.push(label ? label.textContent.replace(' *', '') : input.name);
+        }
+      });
+
+      // Check terms checkbox
+      const termsCheckbox = document.getElementById('terms');
+      if (!termsCheckbox.checked) {
+        errors.push('Terms and Conditions');
+        document.getElementById('terms-error').classList.add('show');
+      } else {
+        document.getElementById('terms-error').classList.remove('show');
+      }
+
+      if (errors.length > 0) {
+        // Show validation summary
+        errorList.innerHTML = errors.map(err => `<li>${err} is invalid or missing</li>`).join('');
+        validationSummary.classList.add('error', 'show');
+        validationSummary.classList.remove('success');
+      } else {
+        // Success
+        validationSummary.innerHTML = '✅ Form submitted successfully!';
+        validationSummary.classList.add('success', 'show');
+        validationSummary.classList.remove('error');
+
+        // Reset form after delay
+        setTimeout(() => {
+          form.reset();
+          validationSummary.classList.remove('show');
+          document.querySelectorAll('.success-message').forEach(msg => msg.classList.remove('show'));
+          document.querySelectorAll('input').forEach(input => input.classList.remove('success'));
+        }, 3000);
+      }
+    });
+
+    // Server validation simulation
+    document.getElementById('serverForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const couponCode = document.getElementById('couponCode').value;
+      const responseDiv = document.getElementById('serverResponse');
+
+      responseDiv.innerHTML = '<p>Validating coupon code...</p>';
+
+      // Simulate server call
+      setTimeout(() => {
+        if (couponCode.toUpperCase() === 'SAVE20') {
+          responseDiv.innerHTML = `
+            <div class="alert alert-info" style="background: #f0fdf4; border-color: #10b981; color: #065f46;">
+              ✅ <strong>Valid Coupon!</strong> You saved 20% on your order.
+            </div>
+          `;
+        } else {
+          responseDiv.innerHTML = `
+            <div class="alert alert-error">
+              ❌ <strong>Invalid Coupon Code</strong><br>
+              The coupon code "${couponCode}" is not valid or has expired.
+            </div>
+          `;
+        }
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dynamic Content Testing - UI-Probe</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem 0; margin-bottom: 2rem; }
+    header h1 { text-align: center; }
+    .section { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+    .section h2 { color: #667eea; margin-bottom: 1rem; }
+    .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; transition: all 0.2s; margin-right: 0.5rem; margin-bottom: 0.5rem; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-primary:hover { background: #5a67d8; }
+    .btn-secondary { background: #e2e8f0; color: #4a5568; }
+    .btn-secondary:hover { background: #cbd5e0; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .loading { display: none; padding: 1rem; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; margin: 1rem 0; }
+    .loading.show { display: block; }
+    .spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid #f3f3f3; border-top: 3px solid #667eea; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 0.5rem; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .content-area { min-height: 100px; padding: 1rem; background: #f8f9fa; border-radius: 4px; margin: 1rem 0; }
+    .item-list { list-style: none; padding: 0; }
+    .item-list li { padding: 0.75rem; background: white; margin-bottom: 0.5rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+    .item-list li:hover { background: #f8f9fa; }
+    .search-box { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 1rem; }
+    .search-results { min-height: 200px; }
+    .notification { display: none; padding: 1rem; border-radius: 4px; margin: 1rem 0; }
+    .notification.success { background: #10b981; color: white; }
+    .notification.error { background: #ef4444; color: white; }
+    .notification.info { background: #3b82f6; color: white; }
+    .notification.show { display: block; animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .progress-bar { width: 100%; height: 30px; background: #e2e8f0; border-radius: 15px; overflow: hidden; margin: 1rem 0; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); transition: width 0.3s ease; display: flex; align-items: center; justify-content: center; color: white; }
+    .counter-display { font-size: 2rem; font-weight: bold; color: #667eea; text-align: center; padding: 1rem; }
+    .lazy-content { min-height: 300px; background: #f3f4f6; border-radius: 4px; padding: 2rem; margin: 1rem 0; }
+    .accordion-item { margin-bottom: 0.5rem; }
+    .accordion-header { padding: 1rem; background: #667eea; color: white; cursor: pointer; border-radius: 4px; transition: background 0.2s; }
+    .accordion-header:hover { background: #5a67d8; }
+    .accordion-content { display: none; padding: 1rem; background: #f8f9fa; border-radius: 0 0 4px 4px; }
+    .accordion-content.show { display: block; }
+    .back-link { display: inline-block; margin-bottom: 1rem; color: #667eea; text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    .infinite-scroll { height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; padding: 1rem; background: white; }
+    .scroll-item { padding: 1rem; margin-bottom: 0.5rem; background: #f8f9fa; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>⚡ Dynamic Content Testing</h1>
+    </div>
+  </header>
+
+  <div class="container">
+    <a href="/test" class="back-link">← Back to Test Playground</a>
+
+    <!-- AJAX Content Loading -->
+    <div class="section">
+      <h2>AJAX Content Loading</h2>
+      <p>Test dynamic content loading with simulated API calls:</p>
+
+      <button class="btn btn-primary" onclick="loadContent()">Load Content</button>
+      <button class="btn btn-secondary" onclick="clearContent()">Clear Content</button>
+
+      <div class="loading" id="loadingIndicator">
+        <span class="spinner"></span>
+        Loading content, please wait...
+      </div>
+
+      <div id="dynamicContent" class="content-area">
+        Click "Load Content" to fetch data dynamically.
+      </div>
+    </div>
+
+    <!-- Real-time Search -->
+    <div class="section">
+      <h2>Real-time Search</h2>
+      <input type="text" class="search-box" id="searchInput" placeholder="Type to search (try: product, service, support)...">
+
+      <div id="searchResults" class="search-results content-area">
+        <p>Start typing to see search results...</p>
+      </div>
+    </div>
+
+    <!-- Dynamic List Management -->
+    <div class="section">
+      <h2>Dynamic List Management</h2>
+
+      <button class="btn btn-primary" onclick="addItem()">Add Item</button>
+      <button class="btn btn-danger" onclick="clearItems()">Clear All</button>
+
+      <ul id="itemList" class="item-list">
+        <li>Item 1 <button class="btn btn-danger" onclick="removeItem(this)">Remove</button></li>
+        <li>Item 2 <button class="btn btn-danger" onclick="removeItem(this)">Remove</button></li>
+      </ul>
+    </div>
+
+    <!-- Notifications -->
+    <div class="section">
+      <h2>Dynamic Notifications</h2>
+
+      <button class="btn btn-primary" onclick="showNotification('success')">Success Notification</button>
+      <button class="btn btn-danger" onclick="showNotification('error')">Error Notification</button>
+      <button class="btn btn-secondary" onclick="showNotification('info')">Info Notification</button>
+
+      <div id="notification" class="notification"></div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="section">
+      <h2>Progress Bar Animation</h2>
+
+      <button class="btn btn-primary" onclick="startProgress()">Start Progress</button>
+      <button class="btn btn-secondary" onclick="resetProgress()">Reset</button>
+
+      <div class="progress-bar">
+        <div id="progressFill" class="progress-fill" style="width: 0%">0%</div>
+      </div>
+    </div>
+
+    <!-- Counter -->
+    <div class="section">
+      <h2>Dynamic Counter</h2>
+
+      <div class="counter-display" id="counter">0</div>
+
+      <button class="btn btn-primary" onclick="incrementCounter()">Increment</button>
+      <button class="btn btn-secondary" onclick="decrementCounter()">Decrement</button>
+      <button class="btn btn-danger" onclick="resetCounter()">Reset</button>
+    </div>
+
+    <!-- Lazy Loading -->
+    <div class="section">
+      <h2>Lazy Loading Content</h2>
+
+      <button class="btn btn-primary" onclick="lazyLoad()">Trigger Lazy Load</button>
+
+      <div id="lazyContent" class="lazy-content">
+        <p>Content will appear here after lazy loading...</p>
+      </div>
+    </div>
+
+    <!-- Accordion -->
+    <div class="section">
+      <h2>Expandable Accordion</h2>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(1)">Section 1: Overview</div>
+        <div id="accordion-1" class="accordion-content">
+          <p>This is the content for section 1. It can be expanded and collapsed dynamically.</p>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(2)">Section 2: Features</div>
+        <div id="accordion-2" class="accordion-content">
+          <p>This is the content for section 2. Multiple sections can be open at once.</p>
+        </div>
+      </div>
+
+      <div class="accordion-item">
+        <div class="accordion-header" onclick="toggleAccordion(3)">Section 3: Details</div>
+        <div id="accordion-3" class="accordion-content">
+          <p>This is the content for section 3. Click the header to toggle visibility.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Infinite Scroll -->
+    <div class="section">
+      <h2>Infinite Scroll</h2>
+
+      <div id="infiniteScroll" class="infinite-scroll" onscroll="checkScroll(this)">
+        <div class="scroll-item">Item 1</div>
+        <div class="scroll-item">Item 2</div>
+        <div class="scroll-item">Item 3</div>
+        <div class="scroll-item">Item 4</div>
+        <div class="scroll-item">Item 5</div>
+      </div>
+    </div>
+
+    <!-- Test Commands -->
+    <div class="section">
+      <h2>Test Commands</h2>
+      <pre style="background: #f3f4f6; padding: 1rem; border-radius: 4px;">
+# Test dynamic content loading
+run_flow(goal="Load content and verify it appears", url="http://localhost:8081/test/dynamic")
+
+# Test search functionality
+run_flow(goal="Search for 'product' and verify results", url="http://localhost:8081/test/dynamic")
+
+# Test notifications
+click_button "Success Notification"
+assert_selectors [{"selector": ".notification.success", "exists": true}]
+
+# Test progress bar
+click_button "Start Progress"
+# Wait for completion and verify 100%
+
+# Test accordion
+run_flow(goal="Expand all accordion sections", url="http://localhost:8081/test/dynamic")
+      </pre>
+    </div>
+  </div>
+
+  <script>
+    // AJAX Content Loading
+    function loadContent() {
+      const loading = document.getElementById('loadingIndicator');
+      const content = document.getElementById('dynamicContent');
+
+      loading.classList.add('show');
+      content.innerHTML = 'Loading...';
+
+      // Simulate API call
+      setTimeout(() => {
+        content.innerHTML = `
+          <h3>Content Loaded Successfully!</h3>
+          <p>This content was loaded dynamically via AJAX.</p>
+          <p>Timestamp: ${new Date().toLocaleTimeString()}</p>
+          <ul>
+            <li>Dynamic Item 1</li>
+            <li>Dynamic Item 2</li>
+            <li>Dynamic Item 3</li>
+          </ul>
+        `;
+        loading.classList.remove('show');
+      }, 1500);
+    }
+
+    function clearContent() {
+      document.getElementById('dynamicContent').innerHTML = 'Content cleared. Click "Load Content" to fetch again.';
+    }
+
+    // Real-time Search
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      const query = e.target.value;
+      const resultsDiv = document.getElementById('searchResults');
+
+      if (query.length === 0) {
+        resultsDiv.innerHTML = '<p>Start typing to see search results...</p>';
+        return;
+      }
+
+      resultsDiv.innerHTML = '<p>Searching...</p>';
+
+      searchTimeout = setTimeout(() => {
+        // Simulate search results
+        const results = [
+          { title: 'Product Management', desc: 'Learn about our products' },
+          { title: 'Customer Service', desc: 'Get support and help' },
+          { title: 'Services Overview', desc: 'Browse our services' },
+          { title: 'Support Documentation', desc: 'Find helpful guides' },
+          { title: 'Product Catalog', desc: 'View all products' }
+        ].filter(item => item.title.toLowerCase().includes(query.toLowerCase()) ||
+                        item.desc.toLowerCase().includes(query.toLowerCase()));
+
+        if (results.length > 0) {
+          resultsDiv.innerHTML = results.map(r => `
+            <div style="padding: 1rem; background: white; margin-bottom: 0.5rem; border-radius: 4px;">
+              <strong>${r.title}</strong><br>
+              <small>${r.desc}</small>
+            </div>
+          `).join('');
+        } else {
+          resultsDiv.innerHTML = '<p>No results found for "' + query + '"</p>';
+        }
+      }, 300);
+    });
+
+    // Dynamic List
+    let itemCounter = 3;
+    function addItem() {
+      const list = document.getElementById('itemList');
+      const li = document.createElement('li');
+      li.innerHTML = `Item ${itemCounter++} <button class="btn btn-danger" onclick="removeItem(this)">Remove</button>`;
+      list.appendChild(li);
+    }
+
+    function removeItem(btn) {
+      btn.parentElement.remove();
+    }
+
+    function clearItems() {
+      document.getElementById('itemList').innerHTML = '';
+      itemCounter = 1;
+    }
+
+    // Notifications
+    function showNotification(type) {
+      const notification = document.getElementById('notification');
+      const messages = {
+        success: '✅ Operation completed successfully!',
+        error: '❌ An error occurred. Please try again.',
+        info: 'ℹ️ This is an informational message.'
+      };
+
+      notification.className = `notification ${type}`;
+      notification.textContent = messages[type];
+      notification.classList.add('show');
+
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 3000);
+    }
+
+    // Progress Bar
+    let progressInterval;
+    function startProgress() {
+      let progress = 0;
+      const fill = document.getElementById('progressFill');
+
+      clearInterval(progressInterval);
+      progressInterval = setInterval(() => {
+        progress += 10;
+        fill.style.width = progress + '%';
+        fill.textContent = progress + '%';
+
+        if (progress >= 100) {
+          clearInterval(progressInterval);
+          showNotification('success');
+        }
+      }, 200);
+    }
+
+    function resetProgress() {
+      clearInterval(progressInterval);
+      document.getElementById('progressFill').style.width = '0%';
+      document.getElementById('progressFill').textContent = '0%';
+    }
+
+    // Counter
+    let counterValue = 0;
+    function incrementCounter() {
+      counterValue++;
+      document.getElementById('counter').textContent = counterValue;
+    }
+
+    function decrementCounter() {
+      counterValue--;
+      document.getElementById('counter').textContent = counterValue;
+    }
+
+    function resetCounter() {
+      counterValue = 0;
+      document.getElementById('counter').textContent = counterValue;
+    }
+
+    // Lazy Loading
+    function lazyLoad() {
+      const content = document.getElementById('lazyContent');
+      content.innerHTML = '<p>Loading content...</p>';
+
+      setTimeout(() => {
+        content.innerHTML = `
+          <h3>Lazy Loaded Content</h3>
+          <p>This content was loaded on demand to improve initial page load performance.</p>
+          <img src="data:image/svg+xml,%3Csvg width='200' height='100' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='200' height='100' fill='%23667eea'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='white' font-family='sans-serif'%3ELoaded Image%3C/text%3E%3C/svg%3E" alt="Placeholder">
+          <p>Additional content that wasn't needed immediately.</p>
+        `;
+      }, 1000);
+    }
+
+    // Accordion
+    function toggleAccordion(num) {
+      const content = document.getElementById(`accordion-${num}`);
+      content.classList.toggle('show');
+    }
+
+    // Infinite Scroll
+    let scrollItemCount = 5;
+    function checkScroll(element) {
+      if (element.scrollTop + element.clientHeight >= element.scrollHeight - 5) {
+        // Load more items
+        for (let i = 0; i < 3; i++) {
+          const div = document.createElement('div');
+          div.className = 'scroll-item';
+          div.textContent = `Item ${++scrollItemCount}`;
+          element.appendChild(div);
+        }
+      }
+    }
+  </script>
+</body>
+</html>

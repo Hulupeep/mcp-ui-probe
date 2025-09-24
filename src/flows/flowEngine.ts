@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { TestRun, TestStep, TestError, Form, FormField } from '../types/index.js';
 import { dataSynthesizer } from '../utils/dataSynthesizer.js';
 import { SelectorError } from '../utils/errors.js';
+import { checkboxResolver } from '../utils/checkboxResolver.js';
+import { smartFieldResolver } from '../utils/smartFieldResolver.js';
 import logger from '../utils/logger.js';
 
 export class FlowEngine {
@@ -135,15 +137,21 @@ export class FlowEngine {
       // Generate field data
       const value = dataSynthesizer.generateFieldData(field, overrides);
 
-      // Find element with retries and self-healing
-      const element = await this.findElementWithRetry(page, field.selector);
+      // Special handling for checkboxes with values
+      if (field.type === 'checkbox' && (typeof value === 'string' || Array.isArray(value))) {
+        // Use CheckboxResolver for checkbox fields with specific values
+        await this.inputValue(page, null, field, value);
+      } else {
+        // Find element with retries and self-healing
+        const element = await this.findElementWithRetry(page, field.selector);
 
-      if (!element) {
-        throw new SelectorError(`Element not found: ${field.selector}`);
+        if (!element) {
+          throw new SelectorError(`Element not found: ${field.selector}`);
+        }
+
+        // Handle different input types
+        await this.inputValue(page, element, field, value);
       }
-
-      // Handle different input types
-      await this.inputValue(page, element, field, value);
 
       // Record successful step
       this.steps.push({
@@ -426,25 +434,128 @@ export class FlowEngine {
   private async inputValue(page: Page, element: any, field: FormField, value: any): Promise<void> {
     switch (field.type) {
       case 'checkbox':
-        if (value && !(await element.isChecked())) {
-          await element.check();
-        } else if (!value && (await element.isChecked())) {
-          await element.uncheck();
+        // Use SmartFieldResolver for better resolution
+        if (Array.isArray(value) || typeof value === 'string') {
+          const locators = await smartFieldResolver.resolveField(
+            page,
+            'checkbox',
+            field.name,
+            value
+          );
+
+          for (const locator of locators) {
+            try {
+              if (await locator.count() > 0 && !(await locator.isChecked())) {
+                await locator.check();
+                logger.info('Checked checkbox using smart resolver', {
+                  fieldName: field.name,
+                  value: Array.isArray(value) ? value : [value]
+                });
+              }
+            } catch (error) {
+              logger.warn('Failed to check checkbox with smart resolver', { error });
+              // Fallback to checkbox resolver
+              if (typeof value === 'string' || Array.isArray(value)) {
+                const fallbackSelectors = await checkboxResolver.resolveCheckbox(page, field.name, value);
+                for (const selector of fallbackSelectors) {
+                  try {
+                    const checkbox = page.locator(selector).first();
+                    if (await checkbox.count() > 0 && !(await checkbox.isChecked())) {
+                      await checkbox.check();
+                    }
+                  } catch (e) {
+                    logger.warn('Fallback also failed', { e });
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          // Boolean value (simple checkbox)
+          if (value && element && !(await element.isChecked())) {
+            await element.check();
+          } else if (!value && element && (await element.isChecked())) {
+            await element.uncheck();
+          }
         }
         break;
 
       case 'radio':
-        await element.check();
+        // Use SmartFieldResolver for radio buttons too
+        if (typeof value === 'string') {
+          const locators = await smartFieldResolver.resolveField(
+            page,
+            'radio',
+            field.name,
+            value
+          );
+
+          if (locators.length > 0) {
+            try {
+              await locators[0].check();
+              logger.info('Selected radio button using smart resolver', {
+                fieldName: field.name,
+                value
+              });
+            } catch (error) {
+              logger.warn('Failed to select radio with smart resolver, using fallback', { error });
+              if (element) {
+                await element.check();
+              }
+            }
+          } else if (element) {
+            await element.check();
+          }
+        } else if (element) {
+          await element.check();
+        }
         break;
 
       case 'select':
-        // Try standard select first
-        try {
-          await element.selectOption(value);
-        } catch (error) {
-          // Handle custom dropdown/combobox
-          logger.info('Standard select failed, trying custom dropdown', { selector: field.selector });
-          await this.handleCustomDropdown(page, element, field, value);
+        // Use SmartFieldResolver for select options
+        if (typeof value === 'string') {
+          // First try to resolve the option value using smart resolver
+          const resolvedValue = await smartFieldResolver.resolveSelectOption(
+            page,
+            field.name,
+            value
+          );
+
+          if (resolvedValue) {
+            try {
+              // Try with resolved value
+              if (element) {
+                await element.selectOption(resolvedValue);
+                logger.info('Selected option using smart resolver', {
+                  fieldName: field.name,
+                  displayText: value,
+                  resolvedValue
+                });
+              }
+            } catch (error) {
+              logger.warn('Smart resolver select failed, trying custom dropdown', { error });
+              await this.handleCustomDropdown(page, element, field, value);
+            }
+          } else {
+            // Fallback to standard select or custom dropdown
+            try {
+              if (element) {
+                await element.selectOption(value);
+              }
+            } catch (error) {
+              logger.info('Standard select failed, trying custom dropdown', { selector: field.selector });
+              await this.handleCustomDropdown(page, element, field, value);
+            }
+          }
+        } else {
+          // Non-string value, try standard approach
+          try {
+            if (element) {
+              await element.selectOption(value);
+            }
+          } catch (error) {
+            await this.handleCustomDropdown(page, element, field, value);
+          }
         }
         break;
 
@@ -478,9 +589,11 @@ export class FlowEngine {
         break;
     }
 
-    // Trigger change events
-    await element.dispatchEvent('change');
-    await element.dispatchEvent('blur');
+    // Trigger change events (only if element exists)
+    if (element && element.dispatchEvent) {
+      await element.dispatchEvent('change');
+      await element.dispatchEvent('blur');
+    }
   }
 
   private async submitForm(page: Page, form: Form): Promise<void> {

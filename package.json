@@ -14,6 +14,8 @@
     "test:unit": "jest --testPathPattern=tests/unit",
     "test:integration": "jest --testPathPattern=tests/integration",
     "test:coverage": "jest --coverage",
+    "test:server": "tsx src/test-server/server.ts",
+    "test:server:build": "node dist/test-server/server.js",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
     "monitoring": "tsx src/monitoring/server.ts",

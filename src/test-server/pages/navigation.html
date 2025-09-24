@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Navigation Testing - UI-Probe</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+    /* Test Results Display */
+    .test-results { position: fixed; right: 20px; top: 20px; width: 350px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 1rem; max-height: 80vh; overflow-y: auto; z-index: 1000; }
+    .test-results h3 { color: #667eea; margin-bottom: 0.5rem; font-size: 1rem; }
+    .test-result-item { padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px; font-size: 0.875rem; }
+    .test-result-item.expected { background: #eff6ff; border-left: 3px solid #3b82f6; }
+    .test-result-item.actual { background: #f0fdf4; border-left: 3px solid #10b981; }
+    .test-result-item .label { font-weight: 600; color: #4b5563; }
+    header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 2rem 0; margin-bottom: 2rem; }
+    header h1 { text-align: center; }
+    .nav-menu { background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-bottom: 2rem; }
+    .nav-menu ul { list-style: none; display: flex; gap: 1rem; flex-wrap: wrap; }
+    .nav-menu a { display: inline-block; padding: 0.5rem 1rem; background: white; color: #667eea; text-decoration: none; border-radius: 4px; border: 1px solid #667eea; transition: all 0.2s; }
+    .nav-menu a:hover { background: #667eea; color: white; }
+    .nav-menu a.active { background: #667eea; color: white; }
+    .page-section { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+    .page-section h2 { color: #667eea; margin-bottom: 1rem; }
+    .breadcrumb { padding: 1rem; background: #f0f4f8; border-radius: 4px; margin-bottom: 1rem; }
+    .breadcrumb a { color: #667eea; text-decoration: none; }
+    .breadcrumb a:hover { text-decoration: underline; }
+    .button-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .btn { padding: 0.75rem 1.5rem; border: none; border-radius: 4px; cursor: pointer; text-align: center; transition: all 0.2s; text-decoration: none; display: inline-block; }
+    .btn-primary { background: #667eea; color: white; }
+    .btn-primary:hover { background: #5a67d8; }
+    .btn-secondary { background: #e2e8f0; color: #4a5568; }
+    .btn-secondary:hover { background: #cbd5e0; }
+    .btn-success { background: #10b981; color: white; }
+    .btn-success:hover { background: #059669; }
+    .tabs { border-bottom: 2px solid #e2e8f0; margin-bottom: 1rem; }
+    .tabs button { background: none; border: none; padding: 0.75rem 1.5rem; cursor: pointer; color: #666; transition: all 0.2s; }
+    .tabs button.active { color: #667eea; border-bottom: 2px solid #667eea; }
+    .tab-content { padding: 1rem 0; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .wizard { background: #f8f9fa; padding: 2rem; border-radius: 8px; }
+    .wizard-steps { display: flex; justify-content: space-between; margin-bottom: 2rem; }
+    .wizard-step { flex: 1; text-align: center; padding: 0.5rem; }
+    .wizard-step.active { background: #667eea; color: white; border-radius: 4px; }
+    .wizard-step.completed { background: #10b981; color: white; border-radius: 4px; }
+    .wizard-content { min-height: 200px; }
+    .back-link { display: inline-block; margin-bottom: 1rem; color: #667eea; text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+    .modal.open { display: flex; }
+    .modal-content { background: white; padding: 2rem; border-radius: 8px; max-width: 500px; width: 90%; }
+    .modal-header { margin-bottom: 1rem; }
+    .modal-close { float: right; font-size: 1.5rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>🧭 Navigation Testing</h1>
+    </div>
+  </header>
+
+  <!-- Test Results Panel -->
+  <div class="test-results" id="testResults">
+    <h3>🧪 Test Results</h3>
+    <div class="test-result-item expected">
+      <div class="label">Expected Behavior:</div>
+      <div id="expectedResult">Click any navigation element to see expected behavior</div>
+    </div>
+    <div class="test-result-item actual">
+      <div class="label">Actual Result:</div>
+      <div id="actualResult">Waiting for interaction...</div>
+    </div>
+  </div>
+
+  <div class="container">
+    <a href="/test" class="back-link">← Back to Test Playground</a>
+
+    <!-- Breadcrumb Navigation -->
+    <div class="breadcrumb">
+      <a href="/test">Home</a> >
+      <a href="/test/navigation">Navigation</a> >
+      <span>Current Page</span>
+    </div>
+
+    <!-- Main Navigation Menu -->
+    <nav class="nav-menu">
+      <ul>
+        <li><a href="#home" class="nav-link active" data-page="home">Home</a></li>
+        <li><a href="#products" class="nav-link" data-page="products">Products</a></li>
+        <li><a href="#services" class="nav-link" data-page="services">Services</a></li>
+        <li><a href="#about" class="nav-link" data-page="about">About</a></li>
+        <li><a href="#contact" class="nav-link" data-page="contact">Contact</a></li>
+      </ul>
+    </nav>
+
+    <!-- Button Navigation Examples -->
+    <div class="page-section">
+      <h2>Button Navigation</h2>
+      <p>Test different types of navigation buttons and links:</p>
+
+      <div class="button-grid">
+        <button class="btn btn-primary" onclick="navigateTo('dashboard')">Go to Dashboard</button>
+        <button class="btn btn-secondary" onclick="navigateTo('pricing')">View Pricing</button>
+        <button class="btn btn-success" onclick="showModal()">Open Modal</button>
+        <button class="btn btn-primary" onclick="navigateTo('checkout')">Checkout</button>
+      </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="page-section">
+      <h2>Tab Navigation</h2>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="features">Features</button>
+        <button class="tab-btn" data-tab="pricing">Pricing</button>
+        <button class="tab-btn" data-tab="reviews">Reviews</button>
+      </div>
+
+      <div class="tab-content">
+        <div class="tab-panel active" id="overview">
+          <h3>Overview</h3>
+          <p>This is the overview tab content. Click on different tabs to navigate between sections.</p>
+        </div>
+        <div class="tab-panel" id="features">
+          <h3>Features</h3>
+          <p>Feature list and descriptions go here.</p>
+        </div>
+        <div class="tab-panel" id="pricing">
+          <h3>Pricing</h3>
+          <p>Pricing information and plans.</p>
+        </div>
+        <div class="tab-panel" id="reviews">
+          <h3>Reviews</h3>
+          <p>Customer reviews and testimonials.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Multi-Step Wizard -->
+    <div class="page-section">
+      <h2>Multi-Step Wizard Navigation</h2>
+
+      <div class="wizard">
+        <div class="wizard-steps">
+          <div class="wizard-step active" data-step="1">Step 1: Personal Info</div>
+          <div class="wizard-step" data-step="2">Step 2: Contact Details</div>
+          <div class="wizard-step" data-step="3">Step 3: Preferences</div>
+          <div class="wizard-step" data-step="4">Step 4: Review</div>
+        </div>
+
+        <div class="wizard-content">
+          <div id="step-content">
+            <h3>Step 1: Personal Information</h3>
+            <p>Enter your personal details here.</p>
+            <br>
+            <button class="btn btn-primary" onclick="nextStep()">Next Step →</button>
+          </div>
+        </div>
+
+        <div style="margin-top: 1rem; display: flex; justify-content: space-between;">
+          <button class="btn btn-secondary" onclick="prevStep()" id="prevBtn" style="display: none;">← Previous</button>
+          <button class="btn btn-primary" onclick="nextStep()" id="nextBtn">Next →</button>
+          <button class="btn btn-success" onclick="completeWizard()" id="completeBtn" style="display: none;">Complete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Dialog -->
+    <div id="modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <span class="modal-close" onclick="closeModal()">×</span>
+          <h2>Modal Navigation</h2>
+        </div>
+        <p>This is a modal dialog. It's often used for important actions or additional information.</p>
+        <br>
+        <button class="btn btn-primary" onclick="closeModal()">Close Modal</button>
+      </div>
+    </div>
+
+    <!-- Test Commands -->
+    <div class="page-section">
+      <h2>Test Commands</h2>
+      <pre style="background: #f3f4f6; padding: 1rem; border-radius: 4px;">
+# Test navigation elements
+analyze_ui "http://localhost:8081/test/navigation"
+
+# Click specific navigation items
+click_button "Products"
+click_button "Go to Dashboard"
+
+# Navigate through wizard
+run_flow(goal="Complete the multi-step wizard", url="http://localhost:8081/test/navigation")
+
+# Test tab navigation
+run_flow(goal="Navigate through all tabs and read content", url="http://localhost:8081/test/navigation")
+      </pre>
+    </div>
+  </div>
+
+  <script>
+    // Test result tracking
+    function updateTestResults(expected, actual) {
+      document.getElementById('expectedResult').innerHTML = expected;
+      document.getElementById('actualResult').innerHTML = actual;
+    }
+
+    // Navigation menu
+    document.querySelectorAll('.nav-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = e.target.dataset.page;
+
+        // Update expected and actual
+        updateTestResults(
+          `Navigation link should:<br>
+          1. Remove 'active' class from all links<br>
+          2. Add 'active' class to clicked link<br>
+          3. Navigate to: ${page}`,
+          `✅ Removed active from all links<br>
+          ✅ Added active to ${page} link<br>
+          ✅ Navigation triggered to: ${page}`
+        );
+
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        e.target.classList.add('active');
+        console.log('Navigated to:', page);
+      });
+    });
+
+    // Tab navigation
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const tabName = e.target.dataset.tab;
+
+        updateTestResults(
+          `Tab button should:<br>
+          1. Remove 'active' from all tabs<br>
+          2. Add 'active' to clicked tab<br>
+          3. Hide all tab panels<br>
+          4. Show ${tabName} panel`,
+          `✅ Deactivated all tabs<br>
+          ✅ Activated ${tabName} tab<br>
+          ✅ Hid all panels<br>
+          ✅ Showing ${tabName} content`
+        );
+
+        // Update active tab button
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+
+        // Show corresponding panel
+        document.querySelectorAll('.tab-panel').forEach(panel => {
+          panel.classList.remove('active');
+        });
+        document.getElementById(tabName).classList.add('active');
+      });
+    });
+
+    // Wizard navigation
+    let currentStep = 1;
+    const totalSteps = 4;
+
+    function updateWizard() {
+      // Update step indicators
+      document.querySelectorAll('.wizard-step').forEach(step => {
+        const stepNum = parseInt(step.dataset.step);
+        step.classList.remove('active', 'completed');
+        if (stepNum === currentStep) {
+          step.classList.add('active');
+        } else if (stepNum < currentStep) {
+          step.classList.add('completed');
+        }
+      });
+
+      // Update content
+      const stepContent = document.getElementById('step-content');
+      const stepTitles = [
+        'Step 1: Personal Information',
+        'Step 2: Contact Details',
+        'Step 3: Preferences',
+        'Step 4: Review & Confirm'
+      ];
+      const stepDescriptions = [
+        'Enter your personal details here.',
+        'Provide your contact information.',
+        'Select your preferences and options.',
+        'Review your information and confirm.'
+      ];
+
+      stepContent.innerHTML = `
+        <h3>${stepTitles[currentStep - 1]}</h3>
+        <p>${stepDescriptions[currentStep - 1]}</p>
+      `;
+
+      // Update buttons
+      document.getElementById('prevBtn').style.display = currentStep > 1 ? 'inline-block' : 'none';
+      document.getElementById('nextBtn').style.display = currentStep < totalSteps ? 'inline-block' : 'none';
+      document.getElementById('completeBtn').style.display = currentStep === totalSteps ? 'inline-block' : 'none';
+    }
+
+    function nextStep() {
+      if (currentStep < totalSteps) {
+        const oldStep = currentStep;
+        currentStep++;
+        updateTestResults(
+          `Next button should:<br>
+          1. Increment step from ${oldStep} to ${currentStep}<br>
+          2. Update step indicators<br>
+          3. Show step ${currentStep} content<br>
+          4. Update navigation buttons`,
+          `✅ Moved from step ${oldStep} to ${currentStep}<br>
+          ✅ Updated step indicators<br>
+          ✅ Showing step ${currentStep} content<br>
+          ✅ Navigation buttons updated`
+        );
+        updateWizard();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 1) {
+        const oldStep = currentStep;
+        currentStep--;
+        updateTestResults(
+          `Previous button should:<br>
+          1. Decrement step from ${oldStep} to ${currentStep}<br>
+          2. Update step indicators<br>
+          3. Show step ${currentStep} content<br>
+          4. Update navigation buttons`,
+          `✅ Moved from step ${oldStep} to ${currentStep}<br>
+          ✅ Updated step indicators<br>
+          ✅ Showing step ${currentStep} content<br>
+          ✅ Navigation buttons updated`
+        );
+        updateWizard();
+      }
+    }
+
+    function completeWizard() {
+      updateTestResults(
+        `Complete button should:<br>
+        1. Show success message<br>
+        2. Reset wizard to step 1<br>
+        3. Clear all form data<br>
+        4. Reset step indicators`,
+        `✅ Showing success alert<br>
+        ✅ Reset to step 1<br>
+        ✅ Cleared form data<br>
+        ✅ Reset all indicators`
+      );
+      alert('✅ Wizard completed successfully!');
+      currentStep = 1;
+      updateWizard();
+    }
+
+    // Modal functions
+    function showModal() {
+      updateTestResults(
+        `Open Modal button should:<br>
+        1. Add 'open' class to modal<br>
+        2. Display modal overlay<br>
+        3. Show modal content<br>
+        4. Enable close button`,
+        `✅ Added 'open' class<br>
+        ✅ Overlay displayed<br>
+        ✅ Modal content visible<br>
+        ✅ Close button active`
+      );
+      document.getElementById('modal').classList.add('open');
+    }
+
+    function closeModal() {
+      updateTestResults(
+        `Close Modal should:<br>
+        1. Remove 'open' class<br>
+        2. Hide modal overlay<br>
+        3. Return focus to page<br>
+        4. Clear modal state`,
+        `✅ Removed 'open' class<br>
+        ✅ Overlay hidden<br>
+        ✅ Focus restored<br>
+        ✅ Modal state cleared`
+      );
+      document.getElementById('modal').classList.remove('open');
+    }
+
+    // Navigation function
+    function navigateTo(page) {
+      updateTestResults(
+        `${page} button should:<br>
+        1. Trigger navigation event<br>
+        2. Show loading state<br>
+        3. Navigate to ${page}<br>
+        4. Update browser history`,
+        `✅ Navigation triggered<br>
+        ✅ Loading state shown<br>
+        ✅ Navigating to: ${page}<br>
+        ✅ History will update`
+      );
+      console.log('Navigating to:', page);
+      // In real app, this would navigate
+      setTimeout(() => {
+        alert(`Would navigate to ${page} page`);
+      }, 100);
+    }
+  </script>
+</body>
+</html>

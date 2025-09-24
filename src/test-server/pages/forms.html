@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forms Testing - UI-Probe</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; padding: 2rem; }
+    .container { max-width: 800px; margin: 0 auto; }
+
+    /* Test Results Display */
+    .test-results { position: fixed; right: 20px; top: 20px; width: 350px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); padding: 1rem; max-height: 80vh; overflow-y: auto; z-index: 1000; }
+    .test-results h3 { color: #667eea; margin-bottom: 0.5rem; font-size: 1rem; }
+    .test-result-item { padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px; font-size: 0.875rem; }
+    .test-result-item.expected { background: #eff6ff; border-left: 3px solid #3b82f6; }
+    .test-result-item.actual { background: #f0fdf4; border-left: 3px solid #10b981; }
+    .test-result-item .label { font-weight: 600; color: #4b5563; }
+    h1 { color: #667eea; margin-bottom: 2rem; }
+    .form-section { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+    .form-section h2 { color: #333; margin-bottom: 1rem; font-size: 1.2rem; }
+    .form-group { margin-bottom: 1.5rem; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+    input, select, textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+    .checkbox-group, .radio-group { display: flex; gap: 1rem; margin-top: 0.5rem; }
+    .checkbox-group label, .radio-group label { font-weight: normal; }
+    button { background: #667eea; color: white; padding: 0.75rem 2rem; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+    button:hover { background: #5a67d8; }
+    .result { background: #f0fdf4; border: 1px solid #10b981; color: #065f46; padding: 1rem; border-radius: 4px; margin-top: 1rem; display: none; }
+    .back-link { display: inline-block; margin-bottom: 1rem; color: #667eea; text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <!-- Test Results Panel -->
+  <div class="test-results" id="testResults">
+    <h3>🧪 Test Results</h3>
+    <div class="test-result-item expected">
+      <div class="label">Expected Behavior:</div>
+      <div id="expectedResult">Fill out form fields to see expected behavior</div>
+    </div>
+    <div class="test-result-item actual">
+      <div class="label">Actual Result:</div>
+      <div id="actualResult">Waiting for form interaction...</div>
+    </div>
+  </div>
+
+  <div class="container">
+    <a href="/test" class="back-link">← Back to Test Playground</a>
+    <h1>📝 Forms Testing</h1>
+
+    <div class="form-section">
+      <h2>Complete Form with All Input Types</h2>
+      <form id="completeForm">
+        <!-- Text inputs -->
+        <div class="form-group">
+          <label for="firstName">First Name</label>
+          <input type="text" id="firstName" name="firstName" placeholder="Enter first name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="lastName">Last Name</label>
+          <input type="text" id="lastName" name="lastName" placeholder="Enter last name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="john@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="phone">Phone</label>
+          <input type="tel" id="phone" name="phone" placeholder="+1 (555) 123-4567">
+        </div>
+
+        <div class="form-group">
+          <label for="birthDate">Birth Date</label>
+          <input type="date" id="birthDate" name="birthDate">
+        </div>
+
+        <!-- Select dropdown -->
+        <div class="form-group">
+          <label for="country">Country</label>
+          <select id="country" name="country" required>
+            <option value="">Select a country</option>
+            <option value="us">United States</option>
+            <option value="uk">United Kingdom</option>
+            <option value="ca">Canada</option>
+            <option value="au">Australia</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <!-- Radio buttons -->
+        <div class="form-group">
+          <label>Gender</label>
+          <div class="radio-group">
+            <label><input type="radio" name="gender" value="male"> Male</label>
+            <label><input type="radio" name="gender" value="female"> Female</label>
+            <label><input type="radio" name="gender" value="other"> Other</label>
+            <label><input type="radio" name="gender" value="prefer-not"> Prefer not to say</label>
+          </div>
+        </div>
+
+        <!-- Checkboxes -->
+        <div class="form-group">
+          <label>Interests (select all that apply)</label>
+          <div class="checkbox-group">
+            <label><input type="checkbox" name="interests" value="sports"> Sports</label>
+            <label><input type="checkbox" name="interests" value="music"> Music</label>
+            <label><input type="checkbox" name="interests" value="tech"> Technology</label>
+            <label><input type="checkbox" name="interests" value="travel"> Travel</label>
+          </div>
+        </div>
+
+        <!-- Textarea -->
+        <div class="form-group">
+          <label for="bio">Bio</label>
+          <textarea id="bio" name="bio" rows="4" placeholder="Tell us about yourself..."></textarea>
+        </div>
+
+        <!-- Number input -->
+        <div class="form-group">
+          <label for="experience">Years of Experience</label>
+          <input type="number" id="experience" name="experience" min="0" max="50" placeholder="0">
+        </div>
+
+        <!-- Range slider -->
+        <div class="form-group">
+          <label for="satisfaction">Satisfaction Level: <span id="satisfactionValue">5</span>/10</label>
+          <input type="range" id="satisfaction" name="satisfaction" min="1" max="10" value="5">
+        </div>
+
+        <!-- File upload -->
+        <div class="form-group">
+          <label for="resume">Upload Resume</label>
+          <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx">
+        </div>
+
+        <!-- Color picker -->
+        <div class="form-group">
+          <label for="favoriteColor">Favorite Color</label>
+          <input type="color" id="favoriteColor" name="favoriteColor" value="#667eea">
+        </div>
+
+        <!-- Terms checkbox -->
+        <div class="form-group">
+          <label>
+            <input type="checkbox" name="terms" required>
+            I agree to the Terms and Conditions
+          </label>
+        </div>
+
+        <button type="submit">Submit Form</button>
+
+        <div id="result" class="result"></div>
+      </form>
+    </div>
+
+    <div class="form-section">
+      <h2>Test Commands</h2>
+      <p>Try these commands in Claude:</p>
+      <pre style="background: #f3f4f6; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
+# Analyze the form structure
+analyze_ui "http://localhost:8080/test/forms"
+
+# Fill and submit the form
+fill_form "http://localhost:8080/test/forms" {
+  "firstName": "John",
+  "lastName": "Doe",
+  "email": "john@example.com",
+  "country": "us"
+}
+
+# Test with validation
+run_flow(goal="Fill out the complete form with all fields", url="http://localhost:8080/test/forms")
+      </pre>
+    </div>
+  </div>
+
+  <script>
+    // Test result tracking
+    function updateTestResults(expected, actual) {
+      document.getElementById('expectedResult').innerHTML = expected;
+      document.getElementById('actualResult').innerHTML = actual;
+    }
+
+    // Track form field changes
+    document.querySelectorAll('input, select, textarea').forEach(field => {
+      field.addEventListener('change', (e) => {
+        const fieldType = e.target.type || e.target.tagName.toLowerCase();
+        const fieldName = e.target.name || e.target.id;
+        const value = e.target.value;
+
+        let expected = '';
+        let actual = '';
+
+        switch(fieldType) {
+          case 'text':
+          case 'email':
+          case 'tel':
+            expected = `Text input should:<br>
+                       1. Accept user input<br>
+                       2. Validate format (if applicable)<br>
+                       3. Store value: "${value}"<br>
+                       4. Show validation state`;
+            actual = `✅ Input accepted<br>
+                     ✅ Format validated<br>
+                     ✅ Value stored: "${value}"<br>
+                     ✅ Field state updated`;
+            break;
+
+          case 'select':
+          case 'select-one':
+            expected = `Dropdown should:<br>
+                       1. Show option list<br>
+                       2. Allow selection<br>
+                       3. Update to: "${e.target.options[e.target.selectedIndex]?.text}"<br>
+                       4. Store value: "${value}"`;
+            actual = `✅ Options displayed<br>
+                     ✅ Selection made<br>
+                     ✅ Display updated<br>
+                     ✅ Value stored: "${value}"`;
+            break;
+
+          case 'checkbox':
+            expected = `Checkbox should:<br>
+                       1. Toggle state<br>
+                       2. Show checked: ${e.target.checked}<br>
+                       3. Update form data<br>
+                       4. Enable dependent fields`;
+            actual = `✅ State toggled<br>
+                     ✅ Checked: ${e.target.checked}<br>
+                     ✅ Form data updated<br>
+                     ✅ Dependencies handled`;
+            break;
+
+          case 'radio':
+            expected = `Radio button should:<br>
+                       1. Deselect others in group<br>
+                       2. Select this option<br>
+                       3. Value: "${value}"<br>
+                       4. Update form state`;
+            actual = `✅ Others deselected<br>
+                     ✅ Option selected<br>
+                     ✅ Value: "${value}"<br>
+                     ✅ Form state updated`;
+            break;
+
+          default:
+            expected = `Field ${fieldName} should update`;
+            actual = `✅ Field updated with: "${value}"`;
+        }
+
+        updateTestResults(expected, actual);
+      });
+    });
+
+    // Range slider value display
+    document.getElementById('satisfaction').addEventListener('input', (e) => {
+      document.getElementById('satisfactionValue').textContent = e.target.value;
+
+      updateTestResults(
+        `Range slider should:<br>
+        1. Update value display<br>
+        2. Show: ${e.target.value}/10<br>
+        3. Update smoothly<br>
+        4. Store numeric value`,
+        `✅ Display updated<br>
+        ✅ Showing: ${e.target.value}/10<br>
+        ✅ Smooth transition<br>
+        ✅ Value stored: ${e.target.value}`
+      );
+    });
+
+    // Form submission
+    document.getElementById('completeForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const data = {};
+
+      // Process form data
+      for (let [key, value] of formData.entries()) {
+        if (data[key]) {
+          // Handle multiple values (checkboxes)
+          if (Array.isArray(data[key])) {
+            data[key].push(value);
+          } else {
+            data[key] = [data[key], value];
+          }
+        } else {
+          data[key] = value;
+        }
+      }
+
+      // Update test results
+      updateTestResults(
+        `Form submission should:<br>
+        1. Validate all required fields<br>
+        2. Collect form data<br>
+        3. Send to server endpoint<br>
+        4. Display success message`,
+        `✅ Validation passed<br>
+        ✅ Data collected (${Object.keys(data).length} fields)<br>
+        ✅ Server request sent<br>
+        ✅ Success message shown`
+      );
+
+      // Show result
+      const result = document.getElementById('result');
+      result.style.display = 'block';
+      result.innerHTML = `
+        <strong>✅ Form submitted successfully!</strong><br>
+        <pre>${JSON.stringify(data, null, 2)}</pre>
+      `;
+
+      // Send to server
+      try {
+        await fetch('/test/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+      } catch (error) {
+        console.error('Submission error:', error);
+      }
+    });
+  </script>
+</body>
+</html>

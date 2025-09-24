@@ -21,6 +21,7 @@ UI-Probe is my wedge: **Claude/MCP-native**, **beginner-friendly**, and **open-s
 - **Claude-native** - Designed specifically for Claude Code CLI, not retrofitted
 - **Actually works for non-devs** - PMs, designers, QA can use it immediately
 - **Open source** - No vendor lock-in, customize as needed
+- **Semantic AI Resolution** - Smart hybrid that uses Playwright's semantic selectors first, then falls back to LLM intelligence only when needed. This means your tests find "Technology" checkboxes even when `value="tech"`, without burning API calls on simple matches
 
 ```bash
 # Instead of this nightmare:
@@ -217,24 +218,36 @@ assert_element "https://myapp.com" "Free shipping" "visible"
 # - Confirms transfer
 ```
 
-## Built-in Test Pages
+## Built-in Test Playground
 
-UI-Probe includes test pages to try:
+UI-Probe includes a comprehensive test playground to try before deploying to your project:
 
 ```bash
-# Start test server
+# Start the test server (runs on port 8081)
 npm run test:server
 
-# Then test it:
-analyze_ui "http://localhost:8080/test/forms"
-fill_form "http://localhost:8080/test/forms" {"name": "Test User"}
+# Visit http://localhost:8081/test in your browser to see the playground
 ```
 
-Test pages include:
-- Forms with every input type
-- Dynamic JavaScript content
-- Validation scenarios
-- Navigation examples
+### Available Test Pages:
+
+- **Main Test Page** (`/test`) - Complete sign-up form with validation
+- **Forms Testing** (`/test/forms`) - Every input type (text, select, radio, checkbox, etc.)
+- **Navigation Testing** (`/test/navigation`) - Multi-page navigation and routing
+- **Dynamic Content** (`/test/dynamic`) - JavaScript-driven UI updates
+- **Validation Scenarios** (`/test/validation`) - Error handling and edge cases
+
+### Test in Claude:
+
+```bash
+# Analyze form structure
+analyze_ui "http://localhost:8081/test/forms"
+
+# Fill and submit forms
+fill_form "http://localhost:8081/test/forms" {"firstName": "John", "email": "john@example.com"}
+
+# Run complete flows
+run_flow(goal="Sign up as new user", url="http://localhost:8081/test")
 
 ## Configuration
 
@@ -317,6 +330,34 @@ When developers change:
 | `click` | Click something | `click "URL" "button text"` |
 | `assert_element` | Check if something exists | `assert_element "URL" "text" "visible"` |
 | `wait_for` | Wait for something | `wait_for "URL" "Loading..." "hidden"` |
+
+## Comparison with playwright-mcp
+
+### Quick Summary
+
+**UI-Probe** and **playwright-mcp** are complementary tools, not competitors:
+
+- **playwright-mcp**: Low-level infrastructure tool providing primitive browser commands for AI agents
+- **UI-Probe**: High-level testing application with plain English interface for end users
+
+### Key Differences
+
+| Aspect | playwright-mcp | UI-Probe |
+|--------|---------------|----------|
+| **Target User** | Developers building AI agents | Non-technical users (PMs, designers, QA) |
+| **Interface** | Element-based (`browser_click`, `browser_type`) | Intent-based (`run_flow "Sign up"`) |
+| **Self-Healing** | No - breaks if DOM changes | Yes - uses AI to adapt to changes |
+| **Test Data** | User must provide | Auto-generates valid data |
+| **Setup** | Single npx command | Clone repo + npm install |
+
+### The Bottom Line
+
+- Use **playwright-mcp** if you're a developer building an AI agent that needs browser control
+- Use **UI-Probe** if you want to test websites without writing code
+
+Think of playwright-mcp as the engine and UI-Probe as the user-friendly car built around it.
+
+**→ For detailed comparison, see [docs/comparison.md](docs/comparison.md)**
 
 ## Contributing
 

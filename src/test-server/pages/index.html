@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UI-Probe Test Playground</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 3rem 0; text-align: center; margin-bottom: 3rem; }
+    h1 { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .subtitle { opacity: 0.9; font-size: 1.1rem; }
+    .test-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 2rem; }
+    .test-card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); padding: 1.5rem; transition: transform 0.2s, box-shadow 0.2s; }
+    .test-card:hover { transform: translateY(-4px); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+    .test-card h3 { color: #667eea; margin-bottom: 0.5rem; }
+    .test-card p { color: #666; margin-bottom: 1rem; }
+    .test-card a { display: inline-block; background: #667eea; color: white; padding: 0.5rem 1rem; border-radius: 4px; text-decoration: none; transition: background 0.2s; }
+    .test-card a:hover { background: #5a67d8; }
+    .signup-section { background: #f7f9fc; padding: 3rem; border-radius: 8px; margin-top: 3rem; }
+    .form-group { margin-bottom: 1.5rem; }
+    label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+    input, select { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+    input:focus, select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); }
+    button { background: #667eea; color: white; padding: 0.75rem 2rem; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+    button:hover { background: #5a67d8; }
+    .success-message { display: none; background: #10b981; color: white; padding: 1rem; border-radius: 4px; margin-top: 1rem; }
+    .error-message { display: none; background: #ef4444; color: white; padding: 1rem; border-radius: 4px; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>🧪 UI-Probe Test Playground</h1>
+      <p class="subtitle">Test UI-Probe capabilities with these interactive pages</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <section>
+      <h2>Available Test Pages</h2>
+      <div class="test-grid">
+        <div class="test-card">
+          <h3>📝 Forms Testing</h3>
+          <p>Test every type of form input including text fields, dropdowns, checkboxes, and more.</p>
+          <a href="/test/forms">Test Forms →</a>
+        </div>
+
+        <div class="test-card">
+          <h3>🧭 Navigation Testing</h3>
+          <p>Test multi-page navigation, links, buttons, and routing scenarios.</p>
+          <a href="/test/navigation">Test Navigation →</a>
+        </div>
+
+        <div class="test-card">
+          <h3>⚡ Dynamic Content</h3>
+          <p>Test JavaScript-driven content, AJAX loading, and dynamic UI updates.</p>
+          <a href="/test/dynamic">Test Dynamic →</a>
+        </div>
+
+        <div class="test-card">
+          <h3>✅ Validation Scenarios</h3>
+          <p>Test form validation, error messages, and edge cases.</p>
+          <a href="/test/validation">Test Validation →</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="signup-section">
+      <h2>Quick Test: Sign Up Form</h2>
+      <p style="margin-bottom: 2rem;">Try this form with UI-Probe using: <code>run_flow(goal="Sign up as new user", url="http://localhost:8080/test")</code></p>
+
+      <form id="signupForm">
+        <div class="form-group">
+          <label for="fullName">Full Name</label>
+          <input type="text" id="fullName" name="fullName" required placeholder="John Doe">
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" required placeholder="john@example.com">
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required minlength="8" placeholder="At least 8 characters">
+        </div>
+
+        <div class="form-group">
+          <label for="company">Company</label>
+          <input type="text" id="company" name="company" placeholder="Acme Inc.">
+        </div>
+
+        <div class="form-group">
+          <label for="role">Role</label>
+          <select id="role" name="role" required>
+            <option value="">Select your role</option>
+            <option value="developer">Developer</option>
+            <option value="designer">Designer</option>
+            <option value="manager">Manager</option>
+            <option value="qa">QA Engineer</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <button type="submit">Create Account</button>
+
+        <div id="successMessage" class="success-message">
+          ✅ Account created successfully! Welcome aboard.
+        </div>
+
+        <div id="errorMessage" class="error-message">
+          ❌ Please fill in all required fields.
+        </div>
+      </form>
+    </section>
+  </div>
+
+  <script>
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData);
+
+      // Basic validation
+      if (!data.fullName || !data.email || !data.password || !data.role) {
+        document.getElementById('errorMessage').style.display = 'block';
+        document.getElementById('successMessage').style.display = 'none';
+        return;
+      }
+
+      // Simulate API call
+      try {
+        const response = await fetch('/test/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+          document.getElementById('successMessage').style.display = 'block';
+          document.getElementById('errorMessage').style.display = 'none';
+          e.target.reset();
+        }
+      } catch (error) {
+        document.getElementById('errorMessage').style.display = 'block';
+        document.getElementById('successMessage').style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
