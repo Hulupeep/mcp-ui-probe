@@ -100,24 +100,34 @@ UI-Probe gives you:
 
 ### Option 1: Use with npx (Easiest - Works Everywhere!)
 
+**Two quick steps:**
+1. ✅ **Test the tool** (works immediately)
+2. 🔧 **Connect to Claude** (one-time setup)
+
+#### Step 1: Test UI-Probe Right Now
 ```bash
 # No installation needed! Just run:
 npx mcp-ui-probe setup         # First time only - installs Playwright browsers
-npx mcp-ui-probe test-server   # Start test playground
-npx mcp-ui-probe start         # Start MCP server
+npx mcp-ui-probe test-server   # Start test playground (visit http://localhost:8081/test)
+npx mcp-ui-probe start         # Start MCP server (for testing the protocol)
 ```
 
-#### ⚠️ Important: Adding to Claude Code CLI
+#### Step 2: Connect to Claude (One-Time Setup)
 
-Claude Code CLI needs the FULL PATH to npx (not just "npx").
+**Why this extra step?** Claude Code CLI can't find `npx` by itself because it doesn't have access to your shell's PATH. You need to tell Claude exactly where npx is located on your computer.
 
-**Automatic Setup (Recommended):**
+**Option A: Automatic Setup (Easiest - does everything for you):**
 ```bash
-# Download and run the setup script
+# This script will:
+# 1. Find where npx is installed on your computer
+# 2. Add UI-Probe to Claude with the correct path
+# 3. Verify everything is configured properly
 curl -sSL https://raw.githubusercontent.com/Hulupeep/mcp-ui-probe/main/scripts/claude-setup.sh | bash
 ```
 
-**Or Manual Setup:**
+After running this, just restart Claude and UI-Probe will be ready to use!
+
+**Option B: Manual Setup (if automatic doesn't work):**
 
 **Step 1: Find your npx path**
 ```bash
@@ -167,11 +177,7 @@ npx playwright install
 claude mcp add ui-probe "node" "/path/to/mcp-ui-probe/dist/index.js"
 ```
 
-### Step 3: Add to Claude Code CLI
-
-See detailed instructions above in Option 1.
-
-### Step 4: Enable AI (Optional but Recommended)
+### Step 3: Enable AI (Optional but Recommended)
 
 ```bash
 # In the mcp-ui-probe folder
@@ -180,7 +186,7 @@ echo "OPENAI_API_KEY=your-key-here" > .env
 
 This makes UI-Probe smarter at understanding your commands.
 
-### Step 5: Test Something!
+### Step 4: Test Something!
 
 ```bash
 # In Claude, just describe what you want:
