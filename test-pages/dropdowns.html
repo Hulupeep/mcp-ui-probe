@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dropdown Components Test - UI Probe</title>
+
+  <!-- React for custom components -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 10px;
+    }
+
+    .section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    /* Standard Select */
+    select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      background: white;
+    }
+
+    /* Custom Dropdown (React Select style) */
+    .custom-select {
+      position: relative;
+      width: 100%;
+    }
+
+    .custom-select-control {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 8px 12px;
+      background: white;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 38px;
+    }
+
+    .custom-select-control:hover {
+      border-color: #aaa;
+    }
+
+    .custom-select-control.focused {
+      border-color: #007bff;
+      box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+    }
+
+    .custom-select-arrow {
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 4px solid #666;
+      transition: transform 0.2s;
+    }
+
+    .custom-select-arrow.open {
+      transform: rotate(180deg);
+    }
+
+    .custom-select-menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-top: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    .custom-select-menu.open {
+      display: block;
+    }
+
+    .custom-select-option {
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .custom-select-option:hover {
+      background: #f0f0f0;
+    }
+
+    .custom-select-option.selected {
+      background: #007bff;
+      color: white;
+    }
+
+    /* Searchable Dropdown */
+    .searchable-select {
+      position: relative;
+    }
+
+    .searchable-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .searchable-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-top: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    .searchable-dropdown.open {
+      display: block;
+    }
+
+    /* Material UI Style Dropdown */
+    .mui-select {
+      position: relative;
+      width: 100%;
+    }
+
+    .mui-select-control {
+      border: none;
+      border-bottom: 1px solid #ddd;
+      padding: 8px 0;
+      background: transparent;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+
+    .mui-select-control:hover {
+      border-bottom-color: #333;
+    }
+
+    .mui-select-control.focused {
+      border-bottom: 2px solid #007bff;
+    }
+
+    .mui-select-label {
+      position: absolute;
+      top: 8px;
+      left: 0;
+      color: #999;
+      font-size: 16px;
+      transition: all 0.3s;
+      pointer-events: none;
+    }
+
+    .mui-select-label.float {
+      top: -20px;
+      font-size: 12px;
+      color: #007bff;
+    }
+
+    /* Multi-select */
+    .multi-select-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      min-height: 20px;
+    }
+
+    .multi-select-tag {
+      background: #007bff;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 14px;
+    }
+
+    .multi-select-tag-remove {
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    /* Async Loading Dropdown */
+    .async-select {
+      position: relative;
+    }
+
+    .loading-spinner {
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #007bff;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Output Display */
+    #output {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+      font-family: monospace;
+      min-height: 50px;
+      white-space: pre-wrap;
+    }
+
+    .result {
+      padding: 8px;
+      margin: 5px 0;
+      border-radius: 4px;
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+  </style>
+</head>
+<body>
+  <h1>Dropdown Components Test Suite</h1>
+
+  <div class="section">
+    <h2>1. Native HTML Select</h2>
+    <div class="form-group">
+      <label for="native-select">Choose an option:</label>
+      <select id="native-select" name="native-select">
+        <option value="">Select...</option>
+        <option value="option1">Option 1</option>
+        <option value="option2">Option 2</option>
+        <option value="option3">Option 3</option>
+        <option value="option4">Option 4</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="native-multiple">Multiple Selection:</label>
+      <select id="native-multiple" name="native-multiple" multiple size="4">
+        <option value="apple">Apple</option>
+        <option value="banana">Banana</option>
+        <option value="orange">Orange</option>
+        <option value="grape">Grape</option>
+        <option value="mango">Mango</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>2. Custom React Select Style</h2>
+    <div id="react-select"></div>
+  </div>
+
+  <div class="section">
+    <h2>3. Searchable/Filterable Dropdown</h2>
+    <div id="searchable-select"></div>
+  </div>
+
+  <div class="section">
+    <h2>4. Material UI Style Dropdown</h2>
+    <div id="mui-select"></div>
+  </div>
+
+  <div class="section">
+    <h2>5. Multi-Select Dropdown</h2>
+    <div id="multi-select"></div>
+  </div>
+
+  <div class="section">
+    <h2>6. Async Loading Dropdown</h2>
+    <div id="async-select"></div>
+  </div>
+
+  <div class="section">
+    <h2>7. Grouped Options Dropdown</h2>
+    <div class="form-group">
+      <label for="grouped-select">Grouped Options:</label>
+      <select id="grouped-select">
+        <option value="">Select a vehicle...</option>
+        <optgroup label="Cars">
+          <option value="sedan">Sedan</option>
+          <option value="suv">SUV</option>
+          <option value="truck">Truck</option>
+        </optgroup>
+        <optgroup label="Bikes">
+          <option value="sport">Sport Bike</option>
+          <option value="cruiser">Cruiser</option>
+          <option value="touring">Touring</option>
+        </optgroup>
+      </select>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Output</h2>
+    <div id="output">Waiting for selections...</div>
+  </div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // Helper function to update output
+    function updateOutput(message) {
+      const output = document.getElementById('output');
+      const timestamp = new Date().toLocaleTimeString();
+      output.textContent = `[${timestamp}] ${message}`;
+    }
+
+    // 2. Custom React Select Component
+    function CustomReactSelect() {
+      const [isOpen, setIsOpen] = useState(false);
+      const [selected, setSelected] = useState(null);
+      const [isFocused, setIsFocused] = useState(false);
+
+      const options = [
+        { value: 'react', label: 'React' },
+        { value: 'angular', label: 'Angular' },
+        { value: 'vue', label: 'Vue.js' },
+        { value: 'svelte', label: 'Svelte' },
+        { value: 'ember', label: 'Ember.js' }
+      ];
+
+      const handleSelect = (option) => {
+        setSelected(option);
+        setIsOpen(false);
+        updateOutput(`React Select: ${option.label}`);
+      };
+
+      return (
+        <div className="form-group">
+          <label>React-Style Custom Select:</label>
+          <div className="custom-select">
+            <div
+              className={`custom-select-control ${isFocused ? 'focused' : ''}`}
+              onClick={() => setIsOpen(!isOpen)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              tabIndex="0"
+              role="combobox"
+              aria-expanded={isOpen}
+            >
+              <span>{selected ? selected.label : 'Select framework...'}</span>
+              <span className={`custom-select-arrow ${isOpen ? 'open' : ''}`}></span>
+            </div>
+            <div className={`custom-select-menu ${isOpen ? 'open' : ''}`}>
+              {options.map(option => (
+                <div
+                  key={option.value}
+                  className={`custom-select-option ${selected?.value === option.value ? 'selected' : ''}`}
+                  onClick={() => handleSelect(option)}
+                  role="option"
+                  aria-selected={selected?.value === option.value}
+                >
+                  {option.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 3. Searchable Select Component
+    function SearchableSelect() {
+      const [isOpen, setIsOpen] = useState(false);
+      const [search, setSearch] = useState('');
+      const [selected, setSelected] = useState(null);
+
+      const countries = [
+        'United States', 'Canada', 'Mexico', 'Brazil', 'Argentina',
+        'United Kingdom', 'Germany', 'France', 'Italy', 'Spain',
+        'Japan', 'China', 'India', 'Australia', 'New Zealand'
+      ];
+
+      const filtered = countries.filter(country =>
+        country.toLowerCase().includes(search.toLowerCase())
+      );
+
+      const handleSelect = (country) => {
+        setSelected(country);
+        setSearch(country);
+        setIsOpen(false);
+        updateOutput(`Searchable Select: ${country}`);
+      };
+
+      return (
+        <div className="form-group">
+          <label>Searchable Country Select:</label>
+          <div className="searchable-select">
+            <input
+              type="text"
+              className="searchable-input"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onFocus={() => setIsOpen(true)}
+              placeholder="Type to search countries..."
+              role="combobox"
+              aria-autocomplete="list"
+            />
+            <div className={`searchable-dropdown ${isOpen ? 'open' : ''}`}>
+              {filtered.map(country => (
+                <div
+                  key={country}
+                  className="custom-select-option"
+                  onClick={() => handleSelect(country)}
+                >
+                  {country}
+                </div>
+              ))}
+              {filtered.length === 0 && (
+                <div style={{padding: '8px 12px', color: '#999'}}>
+                  No results found
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 4. Material UI Style Select
+    function MaterialUISelect() {
+      const [isOpen, setIsOpen] = useState(false);
+      const [selected, setSelected] = useState('');
+      const [isFocused, setIsFocused] = useState(false);
+
+      const options = [
+        { value: 'primary', label: 'Primary Color' },
+        { value: 'secondary', label: 'Secondary Color' },
+        { value: 'success', label: 'Success Color' },
+        { value: 'danger', label: 'Danger Color' },
+        { value: 'warning', label: 'Warning Color' }
+      ];
+
+      const handleSelect = (option) => {
+        setSelected(option);
+        setIsOpen(false);
+        updateOutput(`Material UI Select: ${option.label}`);
+      };
+
+      return (
+        <div className="form-group">
+          <label>Material UI Style Select:</label>
+          <div className="mui-select">
+            <div className={`mui-select-label ${selected ? 'float' : ''}`}>
+              Choose a color
+            </div>
+            <div
+              className={`mui-select-control ${isFocused ? 'focused' : ''}`}
+              onClick={() => setIsOpen(!isOpen)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              tabIndex="0"
+            >
+              <span>{selected ? selected.label : ''}</span>
+              <span className={`custom-select-arrow ${isOpen ? 'open' : ''}`}></span>
+            </div>
+            <div className={`custom-select-menu ${isOpen ? 'open' : ''}`}>
+              {options.map(option => (
+                <div
+                  key={option.value}
+                  className={`custom-select-option ${selected?.value === option.value ? 'selected' : ''}`}
+                  onClick={() => handleSelect(option)}
+                >
+                  {option.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 5. Multi-Select Component
+    function MultiSelect() {
+      const [isOpen, setIsOpen] = useState(false);
+      const [selected, setSelected] = useState([]);
+
+      const skills = [
+        'JavaScript', 'TypeScript', 'React', 'Angular', 'Vue.js',
+        'Node.js', 'Python', 'Java', 'C++', 'Go',
+        'Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP'
+      ];
+
+      const toggleOption = (skill) => {
+        if (selected.includes(skill)) {
+          setSelected(selected.filter(s => s !== skill));
+        } else {
+          setSelected([...selected, skill]);
+        }
+        updateOutput(`Multi-Select: ${selected.join(', ')}`);
+      };
+
+      const removeTag = (skill) => {
+        setSelected(selected.filter(s => s !== skill));
+      };
+
+      return (
+        <div className="form-group">
+          <label>Multi-Select Skills:</label>
+          <div className="custom-select">
+            <div
+              className="custom-select-control"
+              onClick={() => setIsOpen(!isOpen)}
+              tabIndex="0"
+            >
+              {selected.length > 0 ? (
+                <div className="multi-select-tags">
+                  {selected.map(skill => (
+                    <span key={skill} className="multi-select-tag">
+                      {skill}
+                      <span
+                        className="multi-select-tag-remove"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeTag(skill);
+                        }}
+                      >
+                        ×
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span style={{color: '#999'}}>Select skills...</span>
+              )}
+              <span className={`custom-select-arrow ${isOpen ? 'open' : ''}`}></span>
+            </div>
+            <div className={`custom-select-menu ${isOpen ? 'open' : ''}`}>
+              {skills.map(skill => (
+                <div
+                  key={skill}
+                  className={`custom-select-option ${selected.includes(skill) ? 'selected' : ''}`}
+                  onClick={() => toggleOption(skill)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(skill)}
+                    readOnly
+                    style={{marginRight: '8px'}}
+                  />
+                  {skill}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 6. Async Loading Select
+    function AsyncSelect() {
+      const [isOpen, setIsOpen] = useState(false);
+      const [loading, setLoading] = useState(false);
+      const [options, setOptions] = useState([]);
+      const [selected, setSelected] = useState(null);
+
+      const loadOptions = async () => {
+        setIsOpen(true);
+        setLoading(true);
+        updateOutput('Loading async options...');
+
+        // Simulate API call
+        setTimeout(() => {
+          const users = [
+            { id: 1, name: 'John Doe', email: 'john@example.com' },
+            { id: 2, name: 'Jane Smith', email: 'jane@example.com' },
+            { id: 3, name: 'Bob Johnson', email: 'bob@example.com' },
+            { id: 4, name: 'Alice Brown', email: 'alice@example.com' },
+            { id: 5, name: 'Charlie Davis', email: 'charlie@example.com' }
+          ];
+          setOptions(users);
+          setLoading(false);
+          updateOutput('Async options loaded!');
+        }, 1500);
+      };
+
+      const handleSelect = (user) => {
+        setSelected(user);
+        setIsOpen(false);
+        updateOutput(`Async Select: ${user.name} (${user.email})`);
+      };
+
+      return (
+        <div className="form-group">
+          <label>Async Loading Select:</label>
+          <div className="async-select">
+            <div
+              className="custom-select-control"
+              onClick={loadOptions}
+              tabIndex="0"
+            >
+              <span>
+                {selected ? `${selected.name} (${selected.email})` : 'Click to load users...'}
+              </span>
+              {loading ? (
+                <div className="loading-spinner"></div>
+              ) : (
+                <span className={`custom-select-arrow ${isOpen ? 'open' : ''}`}></span>
+              )}
+            </div>
+            <div className={`custom-select-menu ${isOpen && !loading ? 'open' : ''}`}>
+              {options.map(user => (
+                <div
+                  key={user.id}
+                  className={`custom-select-option ${selected?.id === user.id ? 'selected' : ''}`}
+                  onClick={() => handleSelect(user)}
+                >
+                  <div>{user.name}</div>
+                  <small style={{color: '#999'}}>{user.email}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Render all components
+    ReactDOM.render(<CustomReactSelect />, document.getElementById('react-select'));
+    ReactDOM.render(<SearchableSelect />, document.getElementById('searchable-select'));
+    ReactDOM.render(<MaterialUISelect />, document.getElementById('mui-select'));
+    ReactDOM.render(<MultiSelect />, document.getElementById('multi-select'));
+    ReactDOM.render(<AsyncSelect />, document.getElementById('async-select'));
+
+    // Native select handlers
+    document.getElementById('native-select').addEventListener('change', function(e) {
+      updateOutput(`Native Select: ${e.target.value}`);
+    });
+
+    document.getElementById('native-multiple').addEventListener('change', function(e) {
+      const selected = Array.from(e.target.selectedOptions).map(opt => opt.value);
+      updateOutput(`Multiple Select: ${selected.join(', ')}`);
+    });
+
+    document.getElementById('grouped-select').addEventListener('change', function(e) {
+      updateOutput(`Grouped Select: ${e.target.value}`);
+    });
+  </script>
+</body>
+</html>

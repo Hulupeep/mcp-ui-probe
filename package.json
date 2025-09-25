@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "ui-probe": "dist/cli.js"
+    "mcp-ui-probe": "dist/cli.js"
   },
   "scripts": {
     "build": "tsc && cp -r src/test-server/pages dist/test-server/",
@@ -15,7 +15,9 @@
     "test": "jest",
     "test:unit": "jest --testPathPattern=tests/unit",
     "test:integration": "jest --testPathPattern=tests/integration",
+    "test:react": "jest --testPathPattern=tests/integration/reactCompatibility.test.ts",
     "test:coverage": "jest --coverage",
+    "test:react-manual": "npm run build && node scripts/test-react-fix.js",
     "test:server": "tsx src/test-server/server.ts",
     "test:server:build": "node dist/test-server/server.js",
     "lint": "eslint src --ext .ts",
@@ -28,9 +30,11 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "latest",
+    "@types/js-yaml": "^4.0.9",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.18.2",
+    "js-yaml": "^4.1.0",
     "node-fetch": "^3.3.2",
     "openai": "^5.22.1",
     "playwright": "^1.49.0",

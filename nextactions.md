@@ -8,6 +8,8 @@ This document outlines the backlog of work to enhance the MCP UI Probe, making i
 
 These items are essential for the core value proposition of the tool.
 
+* Fix problem with not being able to interact with react properly. see reactbug.md
+
 - **Implement File Uploads:** The `flowEngine` currently logs a warning that file uploads are not implemented. This is a critical feature for testing many modern web applications (e.g., profile pictures, resume submissions).
     - *File:* `src/flows/flowEngine.ts`
     - *Action:* Implement logic within `inputValue` for `field.type === 'file'`.
@@ -23,6 +25,7 @@ These items are essential for the core value proposition of the tool.
 - **Complete Monitoring Integration:** The `monitoring/integration.ts` file contains conceptual code and pseudocode for hooking into the MCP server. This needs to be fully implemented to provide the rich monitoring capabilities envisioned in the architecture.
     - *File:* `src/monitoring/integration.ts`
     - *Action:* Replace pseudocode with actual hooks into the `MCPServer` or `flowEngine` to emit events for test steps, errors, and performance.
+- Remember click throughs - when a journey is executed end to end, record it and give it a name so that it can be repeated easily. Save these as configurable files in yaml or json.  When the same request is given, it tries the saved configuration, however it will check its starting point is correct (can't order a tshirt ona  sign up page etc). LLM should help position and verify a configuration. 
 
 ---
 

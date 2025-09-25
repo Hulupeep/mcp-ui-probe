@@ -157,30 +157,40 @@ export function createMonitoringIntegration(monitoring: MonitoringServer): Monit
         };
       };
 
-      // Note: This is a conceptual implementation. In practice, you'd need to:
-      // 1. Identify the actual test execution methods in the MCP server
-      // 2. Wrap them with monitoring hooks
-      // 3. Store references to original methods for cleanup
-
-      // Example of what methods might be wrapped:
+      // Wrap actual MCP server methods
       const methodsToWrap = [
-        'takeScreenshot',
-        'clickElement',
-        'typeText',
-        'waitForElement',
-        'navigateToPage',
-        'findElements',
-        'executeScript'
+        'handleNavigate',
+        'handleAnalyzeUI',
+        'handleInferForm',
+        'handleFillAndSubmit',
+        'handleRunFlow',
+        'handleClickButton',
+        'handleAssertSelectors',
+        'handleVerifyPage',
+        'handleCollectErrors',
+        'handleExportReport'
       ];
 
-      // This is pseudocode - actual implementation would depend on MCP server architecture
+      // Wrap MCP server tool handlers with monitoring
       methodsToWrap.forEach(methodName => {
         const originalMethod = (mcpServer as any)[methodName];
         if (typeof originalMethod === 'function') {
           originalHandlers.set(methodName, originalMethod);
-          (mcpServer as any)[methodName] = wrapTestMethod(methodName, originalMethod);
+          (mcpServer as any)[methodName] = wrapTestMethod(methodName, originalMethod.bind(mcpServer));
         }
       });
+
+      // Also wrap the flow engine if available
+      if ((mcpServer as any).flowEngine) {
+        const flowMethodsToWrap = ['executeFlow', 'fillField', 'handleCustomDropdown', 'handleFileUpload'];
+        flowMethodsToWrap.forEach(methodName => {
+          const originalMethod = (mcpServer as any).flowEngine[methodName];
+          if (typeof originalMethod === 'function') {
+            originalHandlers.set(`flowEngine.${methodName}`, originalMethod);
+            (mcpServer as any).flowEngine[methodName] = wrapTestMethod(`flowEngine.${methodName}`, originalMethod.bind((mcpServer as any).flowEngine));
+          }
+        });
+      }
     },
 
     setupErrorHooks(mcpServer: UITestingServer) {

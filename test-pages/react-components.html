@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>React Components Test - UI Probe</title>
+
+  <!-- React and Babel for in-browser transpilation -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 10px;
+    }
+
+    .section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Card Styles */
+    .plan-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+
+    .plan-card {
+      padding: 20px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      background: white;
+      position: relative;
+    }
+
+    .plan-card:hover {
+      border-color: #007bff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,123,255,0.15);
+    }
+
+    .plan-card.selected {
+      border-color: #28a745;
+      background: #f0fff4;
+    }
+
+    .plan-card h3 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+
+    .plan-card .price {
+      font-size: 24px;
+      font-weight: bold;
+      color: #007bff;
+      margin: 10px 0;
+    }
+
+    .plan-card .features {
+      list-style: none;
+      padding: 0;
+      margin: 15px 0;
+    }
+
+    .plan-card .features li {
+      padding: 5px 0;
+      color: #666;
+    }
+
+    .plan-card .features li:before {
+      content: "✓ ";
+      color: #28a745;
+      font-weight: bold;
+    }
+
+    /* Custom Button Styles */
+    .custom-button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.3s;
+      margin: 5px;
+    }
+
+    .custom-button:hover {
+      background: #0056b3;
+    }
+
+    .custom-button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .custom-button.success {
+      background: #28a745;
+    }
+
+    .custom-button.danger {
+      background: #dc3545;
+    }
+
+    /* Non-semantic clickable elements */
+    .clickable-div {
+      display: inline-block;
+      padding: 10px 15px;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      transition: all 0.3s;
+    }
+
+    .clickable-div:hover {
+      background: #e9ecef;
+      border-color: #adb5bd;
+    }
+
+    /* Modal Styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+    }
+
+    .modal-overlay.open {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 500px;
+      width: 90%;
+    }
+
+    /* Output/Result Display */
+    #output {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+      min-height: 50px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      border: 1px solid #dee2e6;
+    }
+
+    .result-message {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      animation: slideIn 0.3s ease;
+    }
+
+    .result-message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .result-message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>React Components Test Suite</h1>
+
+  <div class="section">
+    <h2>1. Custom Card Components (Plan Selection)</h2>
+    <div id="plan-selector"></div>
+    <button id="continue-button" class="custom-button" disabled>Continue to Signup</button>
+  </div>
+
+  <div class="section">
+    <h2>2. Non-Semantic Clickable Elements</h2>
+    <div id="custom-buttons"></div>
+  </div>
+
+  <div class="section">
+    <h2>3. React Event Handlers</h2>
+    <div id="event-demo"></div>
+  </div>
+
+  <div class="section">
+    <h2>4. Dynamic Content Loading</h2>
+    <div id="dynamic-content"></div>
+  </div>
+
+  <div class="section">
+    <h2>5. Modal with React State</h2>
+    <div id="modal-demo"></div>
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal">
+        <h3>React Modal</h3>
+        <p>This modal is controlled by React state</p>
+        <button class="custom-button" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Output</h2>
+    <div id="output">Waiting for interactions...</div>
+  </div>
+
+  <!-- React Components -->
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // 1. Plan Selection Cards Component
+    function PlanSelector() {
+      const [selectedPlan, setSelectedPlan] = useState(null);
+
+      const plans = [
+        {
+          id: 'free',
+          name: 'Free Trial',
+          price: '$0/month',
+          features: ['10 tests/day', 'Basic support', 'Community access']
+        },
+        {
+          id: 'pro',
+          name: 'Professional',
+          price: '$49/month',
+          features: ['Unlimited tests', 'Priority support', 'Advanced features', 'API access']
+        },
+        {
+          id: 'enterprise',
+          name: 'Enterprise',
+          price: 'Custom',
+          features: ['Unlimited everything', 'Dedicated support', 'Custom integrations', 'SLA']
+        }
+      ];
+
+      useEffect(() => {
+        const button = document.getElementById('continue-button');
+        if (selectedPlan) {
+          button.disabled = false;
+          button.onclick = () => {
+            updateOutput(`Continuing with ${selectedPlan} plan...`);
+            showResult('success', `Selected plan: ${selectedPlan}`);
+          };
+        } else {
+          button.disabled = true;
+        }
+      }, [selectedPlan]);
+
+      return (
+        <div className="plan-cards">
+          {plans.map(plan => (
+            <div
+              key={plan.id}
+              className={`plan-card ${selectedPlan === plan.id ? 'selected' : ''}`}
+              onClick={() => {
+                setSelectedPlan(plan.id);
+                updateOutput(`Plan selected: ${plan.name}`);
+              }}
+              data-plan-id={plan.id}
+              role="button"
+              tabIndex="0"
+            >
+              <h3>{plan.name}</h3>
+              <div className="price">{plan.price}</div>
+              <ul className="features">
+                {plan.features.map((feature, i) => (
+                  <li key={i}>{feature}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // 2. Custom Button Components
+    function CustomButtons() {
+      const [clickCount, setClickCount] = useState(0);
+
+      const handleCustomClick = (action) => {
+        setClickCount(clickCount + 1);
+        updateOutput(`Custom element clicked: ${action} (count: ${clickCount + 1})`);
+      };
+
+      return (
+        <div>
+          <div
+            className="clickable-div"
+            onClick={() => handleCustomClick('div-button-1')}
+          >
+            Clickable Div 1
+          </div>
+
+          <div
+            className="clickable-div"
+            onClick={() => handleCustomClick('div-button-2')}
+            style={{background: '#e3f2fd'}}
+          >
+            Clickable Div 2
+          </div>
+
+          <span
+            style={{
+              display: 'inline-block',
+              padding: '10px 15px',
+              background: '#fff3e0',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              margin: '5px'
+            }}
+            onClick={() => handleCustomClick('span-button')}
+          >
+            Clickable Span
+          </span>
+
+          <div
+            role="button"
+            tabIndex="0"
+            style={{
+              display: 'inline-block',
+              padding: '10px 15px',
+              background: '#f3e5f5',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              margin: '5px'
+            }}
+            onClick={() => handleCustomClick('aria-button')}
+            onKeyPress={(e) => e.key === 'Enter' && handleCustomClick('aria-button-keyboard')}
+          >
+            ARIA Button
+          </div>
+
+          <p>Click count: {clickCount}</p>
+        </div>
+      );
+    }
+
+    // 3. Event Handler Demo
+    function EventDemo() {
+      const [events, setEvents] = useState([]);
+
+      const logEvent = (eventType, detail) => {
+        const newEvent = `${eventType}: ${detail}`;
+        setEvents(prev => [...prev.slice(-4), newEvent]);
+        updateOutput(newEvent);
+      };
+
+      return (
+        <div>
+          <button
+            className="custom-button"
+            onClick={() => logEvent('Click', 'Button clicked')}
+            onDoubleClick={() => logEvent('DoubleClick', 'Button double-clicked')}
+          >
+            Click Me
+          </button>
+
+          <button
+            className="custom-button success"
+            onMouseEnter={() => logEvent('MouseEnter', 'Mouse entered')}
+            onMouseLeave={() => logEvent('MouseLeave', 'Mouse left')}
+          >
+            Hover Me
+          </button>
+
+          <input
+            type="text"
+            placeholder="Type something..."
+            onChange={(e) => logEvent('Change', `Input: ${e.target.value}`)}
+            style={{padding: '8px', margin: '5px'}}
+          />
+
+          <div style={{marginTop: '10px'}}>
+            <h4>Recent Events:</h4>
+            {events.map((event, i) => (
+              <div key={i} style={{fontSize: '14px', color: '#666'}}>
+                {event}
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // 4. Dynamic Content Component
+    function DynamicContent() {
+      const [loading, setLoading] = useState(false);
+      const [data, setData] = useState(null);
+
+      const loadContent = () => {
+        setLoading(true);
+        updateOutput('Loading dynamic content...');
+
+        setTimeout(() => {
+          const mockData = {
+            items: ['Item 1', 'Item 2', 'Item 3'],
+            timestamp: new Date().toISOString()
+          };
+          setData(mockData);
+          setLoading(false);
+          updateOutput('Dynamic content loaded!');
+          showResult('success', 'Content loaded successfully');
+        }, 2000);
+      };
+
+      return (
+        <div>
+          <button
+            className="custom-button"
+            onClick={loadContent}
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : 'Load Dynamic Content'}
+          </button>
+
+          {data && (
+            <div style={{marginTop: '15px'}}>
+              <h4>Loaded Data:</h4>
+              <ul>
+                {data.items.map((item, i) => (
+                  <li key={i}>{item}</li>
+                ))}
+              </ul>
+              <small>Loaded at: {data.timestamp}</small>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // 5. Modal Demo Component
+    function ModalDemo() {
+      const [isOpen, setIsOpen] = useState(false);
+
+      const openModal = () => {
+        setIsOpen(true);
+        document.getElementById('modal-overlay').classList.add('open');
+        updateOutput('Modal opened');
+      };
+
+      window.closeModal = () => {
+        setIsOpen(false);
+        document.getElementById('modal-overlay').classList.remove('open');
+        updateOutput('Modal closed');
+      };
+
+      return (
+        <div>
+          <button
+            className="custom-button"
+            onClick={openModal}
+          >
+            Open React Modal
+          </button>
+
+          <div
+            className="clickable-div"
+            onClick={openModal}
+            style={{display: 'inline-block', marginLeft: '10px'}}
+          >
+            Open Modal (Div)
+          </div>
+        </div>
+      );
+    }
+
+    // Helper functions
+    function updateOutput(message) {
+      const output = document.getElementById('output');
+      const timestamp = new Date().toLocaleTimeString();
+      output.textContent = `[${timestamp}] ${message}`;
+    }
+
+    function showResult(type, message) {
+      const output = document.getElementById('output');
+      const resultDiv = document.createElement('div');
+      resultDiv.className = `result-message ${type}`;
+      resultDiv.textContent = message;
+      output.appendChild(resultDiv);
+
+      setTimeout(() => {
+        resultDiv.remove();
+      }, 5000);
+    }
+
+    // Render all components
+    ReactDOM.render(<PlanSelector />, document.getElementById('plan-selector'));
+    ReactDOM.render(<CustomButtons />, document.getElementById('custom-buttons'));
+    ReactDOM.render(<EventDemo />, document.getElementById('event-demo'));
+    ReactDOM.render(<DynamicContent />, document.getElementById('dynamic-content'));
+    ReactDOM.render(<ModalDemo />, document.getElementById('modal-demo'));
+  </script>
+</body>
+</html>

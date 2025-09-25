@@ -179,7 +179,43 @@ export class PlaywrightDriver implements Driver {
           };
         };
 
-        // Helper function to generate selector
+        // Enhanced helper function to detect if element is clickable
+        const isClickableElement = (element: Element): boolean => {
+          // Check if element has click event listeners
+          const hasClickListener = (element as any)._reactListeners?.onClick ||
+                                 (element as any).__reactEventHandlers$?.onClick ||
+                                 element.getAttribute('onclick');
+
+          // Check CSS cursor style
+          const computedStyle = window.getComputedStyle(element);
+          const hasPointerCursor = computedStyle.cursor === 'pointer';
+
+          // Check React synthetic event patterns
+          const hasReactProps = element.hasAttribute('data-reactroot') ||
+                               element.className.includes('react-') ||
+                               element.hasAttribute('data-react');
+
+          // Check for common clickable patterns
+          const clickableClasses = /\b(btn|button|click|link|card|tile|item|menu|nav|action|interactive|selectable|toggle)\b/i;
+          const hasClickableClass = clickableClasses.test(element.className);
+
+          // Check ARIA roles that indicate interactivity
+          const role = element.getAttribute('role');
+          const interactiveRoles = ['button', 'link', 'menuitem', 'tab', 'option', 'checkbox', 'radio', 'switch'];
+          const hasInteractiveRole = role && interactiveRoles.includes(role);
+
+          // Check for tabindex (focusable elements)
+          const tabIndex = element.getAttribute('tabindex');
+          const isFocusable = tabIndex !== null && parseInt(tabIndex) >= 0;
+
+          // Check if element is a semantic clickable element
+          const semanticClickable = ['A', 'BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'].includes(element.tagName);
+
+          return semanticClickable || hasClickListener || hasPointerCursor || hasClickableClass ||
+                 hasInteractiveRole || isFocusable || hasReactProps;
+        };
+
+        // Enhanced helper function to generate selector
         const generateSelector = (element: Element): string => {
           // Prefer data-test attributes
           if (element.hasAttribute('data-test')) {
@@ -199,15 +235,69 @@ export class PlaywrightDriver implements Driver {
             return `[name="${element.getAttribute('name')}"]`;
           }
 
-          // Fallback to class or tag
+          // Enhanced selector generation for React components
           if (element.className && typeof element.className === 'string') {
             const classes = element.className.split(' ').filter(c => c.length > 0);
+
+            // Prioritize React component classes
+            const reactClass = classes.find(c => c.includes('react-') || c.includes('component-') || c.includes('widget-'));
+            if (reactClass) {
+              return `.${reactClass}`;
+            }
+
+            // Look for semantic classes
+            const semanticClass = classes.find(c => /\b(btn|button|card|item|menu|nav|link)\b/i.test(c));
+            if (semanticClass) {
+              return `.${semanticClass}`;
+            }
+
             if (classes.length > 0) {
               return `.${classes[0]}`;
             }
           }
 
-          return element.tagName.toLowerCase();
+          // Generate CSS selector path for complex elements
+          const getUniquePath = (el: Element): string => {
+            const path: string[] = [];
+            let current = el;
+
+            while (current && current.nodeType === Node.ELEMENT_NODE) {
+              let selector = current.tagName.toLowerCase();
+
+              // Add unique identifiers
+              if (current.id) {
+                selector += `#${current.id}`;
+                path.unshift(selector);
+                break;
+              }
+
+              // Add class if meaningful
+              if (current.className && typeof current.className === 'string') {
+                const classes = current.className.split(' ').filter(c => c.length > 0 && !c.includes('css-'));
+                if (classes.length > 0) {
+                  selector += `.${classes[0]}`;
+                }
+              }
+
+              // Add nth-child if needed for uniqueness
+              const siblings = Array.from(current.parentElement?.children || []);
+              const sameTag = siblings.filter(s => s.tagName === current.tagName);
+              if (sameTag.length > 1) {
+                const index = sameTag.indexOf(current) + 1;
+                selector += `:nth-of-type(${index})`;
+              }
+
+              path.unshift(selector);
+              current = current.parentElement!;
+
+              // Limit depth
+              if (path.length >= 4) break;
+            }
+
+            return path.join(' > ');
+          };
+
+          return getUniquePath(element);
         };
 
         // Analyze forms
@@ -265,20 +355,74 @@ export class PlaywrightDriver implements Driver {
           });
         });
 
-        // Analyze buttons
+        // Enhanced button and clickable element analysis
+        const processedElements = new Set<Element>();
+
+        // First pass: semantic buttons and inputs
         document.querySelectorAll('button, input[type="button"], input[type="submit"], [role="button"]').forEach(button => {
+          if (processedElements.has(button)) return;
+          processedElements.add(button);
+
           buttons.push({
             type: 'button',
             selector: generateSelector(button),
             text: button.textContent?.trim() || button.getAttribute('value') || '',
             attributes: {
               type: button.getAttribute('type') || '',
-              disabled: button.hasAttribute('disabled') ? 'true' : 'false'
+              disabled: button.hasAttribute('disabled') ? 'true' : 'false',
+              'data-clickable': 'semantic'
             },
             role: button.getAttribute('role') || 'button',
             name: button.getAttribute('aria-label') || button.textContent?.trim() || '',
             bounds: getBounds(button)
           });
+        });
+
+        // Second pass: React components and custom clickable elements
+        const allElements = document.querySelectorAll('*');
+        allElements.forEach(element => {
+          if (processedElements.has(element)) return;
+
+          // Skip if element is not visible or too small
+          const rect = element.getBoundingClientRect();
+          if (rect.width < 10 || rect.height < 10 || rect.width * rect.height < 100) return;
+
+          if (isClickableElement(element)) {
+            processedElements.add(element);
+
+            // Determine element type based on characteristics
+            let elementType = 'clickable';
+            const className = element.className.toString().toLowerCase();
+            const role = element.getAttribute('role');
+
+            if (className.includes('card') || element.tagName === 'ARTICLE') {
+              elementType = 'card';
+            } else if (className.includes('menu') || className.includes('nav')) {
+              elementType = 'navigation';
+            } else if (role === 'tab' || className.includes('tab')) {
+              elementType = 'tab';
+            } else if (className.includes('toggle') || className.includes('switch')) {
+              elementType = 'toggle';
+            } else if (element.tagName === 'A' || role === 'link') {
+              elementType = 'link';
+            }
+
+            buttons.push({
+              type: elementType,
+              selector: generateSelector(element),
+              text: element.textContent?.trim() || element.getAttribute('aria-label') || '',
+              attributes: {
+                role: role || '',
+                'data-clickable': 'detected',
+                'data-react': element.hasAttribute('data-reactroot') ||
+                             element.className.includes('react-') ? 'true' : 'false',
+                cursor: window.getComputedStyle(element).cursor
+              },
+              role: role || 'button',
+              name: element.getAttribute('aria-label') || element.textContent?.trim() || '',
+              bounds: getBounds(element)
+            });
+          }
         });
 
         // Analyze inputs

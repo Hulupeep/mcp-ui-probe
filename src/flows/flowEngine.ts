@@ -276,28 +276,29 @@ export class FlowEngine {
       const tagName = await element.evaluate((el: any) => el.tagName?.toLowerCase());
       const isContentEditable = await element.evaluate((el: any) => el.contentEditable === 'true');
       const role = await element.getAttribute('role');
+      const className = await element.getAttribute('class') || '';
+
+      // Enhanced detection for modern component libraries
+      const isReactSelect = className.includes('react-select') ||
+                           className.includes('Select') ||
+                           await element.evaluate((el: any) => el.closest('[class*="react-select"]') !== null);
+
+      const isMuiSelect = className.includes('Mui') ||
+                         className.includes('MuiSelect') ||
+                         await element.evaluate((el: any) => el.closest('[class*="Mui"]') !== null);
+
+      const isAntSelect = className.includes('ant-select') ||
+                         await element.evaluate((el: any) => el.closest('[class*="ant-select"]') !== null);
 
       // For React Select, Material UI, Radix UI, etc.
-      if (role === 'combobox' || role === 'searchbox' || isContentEditable) {
-        // Try typing and selecting
-        await element.click();
-        await page.waitForTimeout(200);
+      if (role === 'combobox' || role === 'searchbox' || isContentEditable || isReactSelect || isMuiSelect) {
+        await this.handleSearchableDropdown(page, element, value);
+        return;
+      }
 
-        // Clear existing value
-        await page.keyboard.press('Control+A');
-        await page.keyboard.press('Backspace');
-
-        // Type the value
-        await page.keyboard.type(value.toString());
-        await page.waitForTimeout(500);
-
-        // Try to select the option
-        const enterWorked = await page.keyboard.press('Enter').then(() => true).catch(() => false);
-        if (!enterWorked) {
-          await page.keyboard.press('Tab');
-        }
-
-        logger.info('Used keyboard input for custom dropdown');
+      // Handle Ant Design specifically
+      if (isAntSelect) {
+        await this.handleAntDesignSelect(page, element, value);
         return;
       }
 
@@ -307,27 +308,45 @@ export class FlowEngine {
 
       // Enhanced option selectors for modern components
       const optionSelectors = [
-        // React Select
+        // React Select variants
         `div[id*="react-select"][id*="option"]:has-text("${value}")`,
         `.react-select__option:has-text("${value}")`,
+        `.react-select__menu >> text="${value}"`,
+        `.Select__option:has-text("${value}")`,
 
-        // Material UI
+        // Material UI variants
         `li[role="option"]:has-text("${value}")`,
         `.MuiMenuItem-root:has-text("${value}")`,
+        `.MuiMenu-paper >> li:has-text("${value}")`,
+        `.MuiPopover-paper >> [role="option"]:has-text("${value}")`,
 
         // Radix UI
         `[role="option"]:has-text("${value}")`,
         `[data-radix-collection-item]:has-text("${value}")`,
+        `[data-radix-select-item]:has-text("${value}")`,
+        `[data-radix-combobox-item]:has-text("${value}")`,
 
-        // Ant Design
+        // Ant Design variants
         `.ant-select-item:has-text("${value}")`,
         `.ant-select-dropdown:visible >> text="${value}"`,
+        `.ant-select-item-option:has-text("${value}")`,
+        `.ant-cascader-menu-item:has-text("${value}")`,
+
+        // Chakra UI
+        `[role="menuitem"]:has-text("${value}")`,
+        `[data-focus]:has-text("${value}")`,
+
+        // Headless UI
+        `[role="listbox"] [role="option"]:has-text("${value}")`,
+        `.listbox-option:has-text("${value}")`,
 
         // Generic patterns
         `[role="listbox"] >> text="${value}"`,
         `.dropdown-menu:visible >> text="${value}"`,
         `.dropdown-item:has-text("${value}")`,
         `.select-option:has-text("${value}")`,
+        `.option:has-text("${value}")`,
+        `.choice:has-text("${value}")`,
         `li:has-text("${value}")`,
         `[data-value="${value}"]`,
         `[aria-label="${value}"]`
@@ -560,8 +579,7 @@ export class FlowEngine {
         break;
 
       case 'file':
-        // Handle file uploads if needed
-        logger.warn('File upload not implemented', { fieldName: field.name });
+        await this.handleFileUpload(page, element, field, value);
         break;
 
       default:
@@ -767,6 +785,377 @@ export class FlowEngine {
       return 'passed_with_warnings';
     } else {
       return 'passed';
+    }
+  }
+
+  private async handleFileUpload(page: Page, element: any, field: FormField, value: any): Promise<void> {
+    try {
+      logger.info('Handling file upload', { fieldName: field.name, value });
+
+      // Generate test files if not provided
+      let filePaths: string[] = [];
+
+      if (Array.isArray(value)) {
+        // Multiple files provided
+        filePaths = value;
+      } else if (typeof value === 'string') {
+        // Single file path provided
+        filePaths = [value];
+      } else if (typeof value === 'object' && value !== null) {
+        // File configuration object
+        filePaths = await this.generateTestFiles(value);
+      } else {
+        // Generate default test file
+        filePaths = await this.generateTestFiles({ count: 1, type: 'text' });
+      }
+
+      // Check if it's a drag-and-drop zone
+      const isDragDropZone = await this.isDragDropZone(element);
+
+      if (isDragDropZone) {
+        await this.handleDragDropUpload(page, element, filePaths);
+      } else {
+        // Standard file input
+        if (element) {
+          await element.setInputFiles(filePaths);
+          logger.info('Files uploaded via input element', { count: filePaths.length });
+        } else {
+          // Find file input by various selectors
+          const fileInputSelectors = [
+            'input[type="file"]',
+            '[data-testid*="file"]',
+            '[data-test*="file"]',
+            '[accept*="file"]',
+            '.file-input',
+            '.upload-input'
+          ];
+
+          for (const selector of fileInputSelectors) {
+            try {
+              const fileInput = page.locator(selector).first();
+              if (await fileInput.count() > 0) {
+                await fileInput.setInputFiles(filePaths);
+                logger.info('Files uploaded via selector', { selector, count: filePaths.length });
+                break;
+              }
+            } catch (e) {
+              // Continue to next selector
+            }
+          }
+        }
+      }
+
+      // Trigger change events
+      await page.waitForTimeout(500);
+      if (element) {
+        await element.dispatchEvent('change');
+        await element.dispatchEvent('input');
+      }
+
+    } catch (error) {
+      logger.error('Failed to handle file upload', { fieldName: field.name, error });
+      throw error;
+    }
+  }
+
+  private async generateTestFiles(config: {
+    count?: number;
+    type?: 'text' | 'image' | 'pdf' | 'csv' | 'json';
+    size?: 'small' | 'medium' | 'large';
+    names?: string[];
+  }): Promise<string[]> {
+    const { count = 1, type = 'text', size = 'small' } = config;
+    const filePaths: string[] = [];
+
+    for (let i = 0; i < count; i++) {
+      const timestamp = Date.now();
+      const filename = config.names?.[i] || `test-file-${i + 1}-${timestamp}`;
+      let content = '';
+      let extension = '.txt';
+
+      switch (type) {
+        case 'text':
+          content = this.generateTextContent(size);
+          extension = '.txt';
+          break;
+        case 'csv':
+          content = this.generateCSVContent(size);
+          extension = '.csv';
+          break;
+        case 'json':
+          content = JSON.stringify(this.generateJSONContent(size), null, 2);
+          extension = '.json';
+          break;
+        case 'image':
+          // For images, we'll create a small SVG
+          content = this.generateSVGContent();
+          extension = '.svg';
+          break;
+        case 'pdf':
+          // Simple PDF-like content (not actual PDF)
+          content = '%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj';
+          extension = '.pdf';
+          break;
+      }
+
+      const filePath = `/tmp/claude/${filename}${extension}`;
+
+      try {
+        // Write file content using Node.js fs
+        const fs = await import('fs/promises');
+        await fs.mkdir('/tmp/claude', { recursive: true });
+        await fs.writeFile(filePath, content);
+        filePaths.push(filePath);
+      } catch (error) {
+        logger.warn('Could not write test file, using mock path', { filePath, error });
+        filePaths.push(filePath);
+      }
+    }
+
+    return filePaths;
+  }
+
+  private generateTextContent(size: string): string {
+    const baseText = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. ';
+    const multipliers = { small: 10, medium: 100, large: 1000 };
+    const multiplier = multipliers[size as keyof typeof multipliers] || 10;
+    return baseText.repeat(multiplier);
+  }
+
+  private generateCSVContent(size: string): string {
+    const headers = 'Name,Email,Age,City';
+    const sampleRows = [
+      'John Doe,john@example.com,30,New York',
+      'Jane Smith,jane@example.com,25,Los Angeles',
+      'Bob Johnson,bob@example.com,35,Chicago'
+    ];
+
+    const multipliers = { small: 10, medium: 100, large: 1000 };
+    const rowCount = multipliers[size as keyof typeof multipliers] || 10;
+
+    const rows = [headers];
+    for (let i = 0; i < rowCount; i++) {
+      rows.push(sampleRows[i % sampleRows.length]);
+    }
+
+    return rows.join('\n');
+  }
+
+  private generateJSONContent(size: string): any {
+    const baseObject = {
+      id: 1,
+      name: 'Test Object',
+      description: 'A test JSON object',
+      active: true,
+      tags: ['test', 'mock', 'data']
+    };
+
+    const multipliers = { small: 5, medium: 50, large: 500 };
+    const count = multipliers[size as keyof typeof multipliers] || 5;
+
+    return {
+      data: Array.from({ length: count }, (_, i) => ({
+        ...baseObject,
+        id: i + 1,
+        name: `Test Object ${i + 1}`
+      }))
+    };
+  }
+
+  private generateSVGContent(): string {
+    return `<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100" height="100" fill="#007bff"/>
+  <text x="50" y="55" font-family="Arial" font-size="14" fill="white" text-anchor="middle">Test</text>
+</svg>`;
+  }
+
+  private async isDragDropZone(element: any): Promise<boolean> {
+    try {
+      // Check various indicators that this might be a drag-and-drop zone
+      const indicators = await element.evaluate((el: HTMLElement) => {
+        const className = el.className.toString().toLowerCase();
+        const hasDropZoneClass = /\b(drop-zone|dropzone|file-drop|drag-drop|upload-area)\b/.test(className);
+
+        const style = window.getComputedStyle(el);
+        const hasBorder = style.border && style.border !== 'none' && style.border !== '0px';
+        const hasDashedBorder = style.borderStyle === 'dashed';
+
+        const text = el.textContent?.toLowerCase() || '';
+        const hasDropText = /\b(drop|drag|upload|choose)\b/.test(text);
+
+        return {
+          hasDropZoneClass,
+          hasBorder,
+          hasDashedBorder,
+          hasDropText,
+          tagName: el.tagName.toLowerCase()
+        };
+      });
+
+      return indicators.hasDropZoneClass ||
+             (indicators.hasDashedBorder && indicators.hasDropText) ||
+             (indicators.tagName === 'div' && indicators.hasDropText && indicators.hasBorder);
+
+    } catch (error) {
+      return false;
+    }
+  }
+
+  private async handleDragDropUpload(page: Page, element: any, filePaths: string[]): Promise<void> {
+    try {
+      logger.info('Handling drag-and-drop file upload');
+
+      // Create a file input element if one doesn't exist
+      await page.evaluate(() => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.style.display = 'none';
+        input.id = 'temp-file-input';
+        document.body.appendChild(input);
+      });
+
+      // Set files on the temporary input
+      const tempInput = page.locator('#temp-file-input');
+      await tempInput.setInputFiles(filePaths);
+
+      // Get file data and simulate drop event
+      await element.evaluate((el: HTMLElement, paths: string[]) => {
+        // Create a mock FileList
+        const files = paths.map(path => {
+          const filename = path.split('/').pop() || 'file.txt';
+          return new File(['mock content'], filename, { type: 'text/plain' });
+        });
+
+        // Create and dispatch drag events
+        const dragEnter = new DragEvent('dragenter', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: new DataTransfer()
+        });
+
+        const dragOver = new DragEvent('dragover', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: new DataTransfer()
+        });
+
+        const drop = new DragEvent('drop', {
+          bubbles: true,
+          cancelable: true,
+          dataTransfer: new DataTransfer()
+        });
+
+        // Add files to dataTransfer
+        files.forEach(file => {
+          drop.dataTransfer?.items.add(file);
+        });
+
+        el.dispatchEvent(dragEnter);
+        el.dispatchEvent(dragOver);
+        el.dispatchEvent(drop);
+
+      }, filePaths);
+
+      // Clean up temporary input
+      await page.evaluate(() => {
+        const input = document.getElementById('temp-file-input');
+        if (input) input.remove();
+      });
+
+      logger.info('Drag-and-drop upload completed');
+
+    } catch (error) {
+      logger.error('Failed to handle drag-and-drop upload', { error });
+      throw error;
+    }
+  }
+
+  private async handleSearchableDropdown(page: Page, element: any, value: any): Promise<void> {
+    try {
+      // Try typing and selecting for searchable dropdowns
+      await element.click();
+      await page.waitForTimeout(200);
+
+      // Clear existing value
+      await page.keyboard.press('Control+A');
+      await page.keyboard.press('Backspace');
+      await page.waitForTimeout(100);
+
+      // Type the value
+      await page.keyboard.type(value.toString());
+      await page.waitForTimeout(300);
+
+      // Try multiple selection methods
+      const selectionMethods = [
+        () => page.keyboard.press('Enter'),
+        () => page.keyboard.press('Tab'),
+        () => page.keyboard.press('ArrowDown').then(() => page.keyboard.press('Enter')),
+        // Click on the first option if it appears
+        async () => {
+          const firstOption = page.locator('[role="option"], .option, .dropdown-item').first();
+          if (await firstOption.isVisible({ timeout: 500 })) {
+            await firstOption.click();
+          }
+        }
+      ];
+
+      for (const method of selectionMethods) {
+        try {
+          await method();
+          await page.waitForTimeout(200);
+          // Check if dropdown closed (indicates selection worked)
+          const dropdownStillOpen = await page.locator('[role="listbox"], .dropdown-menu, .react-select__menu').isVisible().catch(() => false);
+          if (!dropdownStillOpen) {
+            logger.info('Used searchable dropdown selection');
+            return;
+          }
+        } catch (e) {
+          // Try next method
+        }
+      }
+
+      logger.warn('Searchable dropdown selection may not have worked');
+    } catch (error) {
+      logger.error('Failed to handle searchable dropdown', { error });
+      throw error;
+    }
+  }
+
+  private async handleAntDesignSelect(page: Page, element: any, value: any): Promise<void> {
+    try {
+      // Ant Design specific handling
+      await element.click();
+      await page.waitForTimeout(300);
+
+      // Look for Ant Design dropdown
+      const antOptionSelectors = [
+        `.ant-select-dropdown:visible .ant-select-item:has-text("${value}")`,
+        `.ant-select-dropdown:visible .ant-select-item-option:has-text("${value}")`,
+        `.ant-select-item[title="${value}"]`,
+        `.ant-select-item-option[title="${value}"]`
+      ];
+
+      for (const selector of antOptionSelectors) {
+        try {
+          const option = page.locator(selector).first();
+          if (await option.isVisible({ timeout: 1000 })) {
+            await option.click();
+            logger.info('Ant Design select option clicked');
+            return;
+          }
+        } catch (e) {
+          // Continue to next selector
+        }
+      }
+
+      // Fallback: use keyboard navigation
+      await page.keyboard.type(value.toString().charAt(0));
+      await page.waitForTimeout(200);
+      await page.keyboard.press('Enter');
+
+    } catch (error) {
+      logger.error('Failed to handle Ant Design select', { error });
+      throw error;
     }
   }
 }

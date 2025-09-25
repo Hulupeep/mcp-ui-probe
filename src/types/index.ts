@@ -22,6 +22,27 @@ export interface ParsedGoal {
   constraints?: any;
 }
 
+// File Upload Configuration Types
+export const FileUploadConfigSchema = z.object({
+  count: z.number().min(1).max(10).default(1),
+  type: z.enum(['text', 'image', 'pdf', 'csv', 'json']).default('text'),
+  size: z.enum(['small', 'medium', 'large']).default('small'),
+  names: z.array(z.string()).optional(),
+  maxSize: z.number().optional(), // Max file size in bytes
+  allowedTypes: z.array(z.string()).optional(), // MIME types
+  dragDrop: z.boolean().default(false) // Force drag-and-drop handling
+});
+
+// Dropdown Configuration Types
+export const DropdownConfigSchema = z.object({
+  componentType: z.enum(['react-select', 'mui', 'ant-design', 'radix', 'chakra', 'headless', 'generic']).optional(),
+  searchable: z.boolean().default(false),
+  async: z.boolean().default(false), // For async-loaded options
+  multiple: z.boolean().default(false),
+  clearable: z.boolean().default(false),
+  customSelectors: z.array(z.string()).optional() // Custom option selectors
+});
+
 // Form Schema Types
 export const FormFieldSchema = z.object({
   name: z.string(),
@@ -38,7 +59,12 @@ export const FormFieldSchema = z.object({
     pattern: z.string().optional()
   }).optional(),
   placeholder: z.string().optional(),
-  label: z.string().optional()
+  label: z.string().optional(),
+  // Enhanced field configuration
+  fileUpload: FileUploadConfigSchema.optional(),
+  dropdown: DropdownConfigSchema.optional(),
+  acceptTypes: z.string().optional(), // For file inputs
+  multiple: z.boolean().optional() // For file inputs and selects
 });
 
 export const FormSchema = z.object({
@@ -198,6 +224,8 @@ export interface ExportReportParams {
 }
 
 // Type exports
+export type FileUploadConfig = z.infer<typeof FileUploadConfigSchema>;
+export type DropdownConfig = z.infer<typeof DropdownConfigSchema>;
 export type FormField = z.infer<typeof FormFieldSchema>;
 export type Form = z.infer<typeof FormSchema>;
 export type FormInference = z.infer<typeof FormInferenceResult>;
@@ -206,3 +234,28 @@ export type TestError = z.infer<typeof ErrorSchema>;
 export type TestRun = z.infer<typeof TestRunSchema>;
 export type UIElement = z.infer<typeof UIElementSchema>;
 export type UIAnalysis = z.infer<typeof UIAnalysisResult>;
+
+// Additional types for enhanced features
+export interface ClickButtonParams {
+  text?: string;
+  selector?: string;
+  waitForNavigation?: boolean;
+  retryAttempts?: number;
+  timeout?: number;
+}
+
+export interface FileUploadResult {
+  success: boolean;
+  filesUploaded: number;
+  filePaths: string[];
+  method: 'input' | 'drag-drop';
+  error?: string;
+}
+
+export interface DropdownSelectionResult {
+  success: boolean;
+  selectedValue: string;
+  method: 'keyboard' | 'click' | 'javascript';
+  componentType?: string;
+  error?: string;
+}
