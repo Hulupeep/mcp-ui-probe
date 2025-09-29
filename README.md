@@ -40,12 +40,65 @@ UI Probe is not just testing — it's a **universal intention layer for the web*
 
 ### What Makes UI-Probe Different
 
+#### 🚀 **Stateful Testing Orchestrator vs Script Generator**
+Unlike standard Playwright MCP tools that create a new JavaScript file for every test, UI-Probe is a **persistent, intelligent testing server** that maintains context and learns from interactions.
+
+**Standard Playwright MCP:**
+- Creates a new .js file for each test
+- No memory between tests
+- You write: `await page.click('#submit')`
+- Starts fresh browser each time
+- Manual selector management
+
+**UI-Probe:**
+- Single persistent server managing all tests
+- Maintains browser context and state
+- You say: "Sign up as a new user"
+- Intelligent form understanding
+- Journey recording and replay
+
+#### 🧠 **AI-Powered Intelligence Built-In**
+
+- **LLM Strategy Engine** - Uses GPT-4/Claude to understand UI context and intent
+- **Workflow Decomposer** - Automatically breaks "Order a pizza" into logical steps
+- **Adaptive Executor** - Adjusts strategy when pages behave unexpectedly
+- **Error Enhancer** - Provides intelligent, actionable error messages
+- **Form Inference Engine** - Automatically understands form structure, validation rules, and generates appropriate test data
+
+#### 📼 **Journey Recording & Replay System**
+
+Complete journey management that no standard Playwright tool offers:
+
+- **Record once, replay forever** - Capture complex workflows and replay them
+- **Journey Validation** - Ensures recorded journeys remain valid
+- **Journey Analysis** - Identifies patterns and improvements
+- **Journey Discovery** - Automatically discovers new test paths
+- **Smart selector generation** - Creates resilient selectors that survive UI changes
+
+#### 🎯 **Natural Language Goal Execution**
+
+```javascript
+// Standard Playwright approach - you write the code:
+const { chromium } = require('playwright');
+const browser = await chromium.launch();
+const page = await browser.newPage();
+await page.goto('http://example.com');
+await page.fill('#email', 'test@example.com');
+await page.fill('#password', 'password123');
+await page.click('button[type="submit"]');
+
+// UI-Probe approach - just describe your goal:
+run_flow({ goal: "Sign up as a new user" })
+```
+
+#### 📊 **Additional Unique Features**
+
 - **Built-in test playground** - Test pages included to try before deploying to your project
 - **Real-time monitoring** - Watch tests run with live feedback
 - **Claude-native** - Designed specifically for Claude Code CLI, not retrofitted
 - **Actually works for non-devs** - PMs, designers, QA can use it immediately
 - **Open source** - No vendor lock-in, customize as needed
-- **Semantic AI Resolution** - Smart hybrid that uses Playwright's semantic selectors first, then falls back to LLM intelligence only when needed. This means your tests find "Technology" checkboxes even when `value="tech"`, without burning API calls on simple matches
+- **Semantic AI Resolution** - Smart hybrid that uses Playwright's semantic selectors first, then falls back to LLM intelligence only when needed
 - **No Code Required** - Unlike raw Playwright MCP where Claude must write test scripts, UI-Probe works immediately without any programming
 - **Deterministic JSON Responses** - Every action returns structured JSON that enables conditional logic and automation:
 
@@ -383,6 +436,55 @@ assert_element "https://myapp.com" "Free shipping" "visible"
 # - Selects accounts
 # - Confirms transfer
 ```
+
+## 🏗️ Architecture Overview
+
+UI-Probe is built as an intelligent, stateful testing orchestrator rather than a simple script runner:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                     Claude Code CLI                      │
+│                    (Natural Language)                    │
+└────────────────────────┬────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                   MCP Server (Persistent)                │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │            Intelligent Components               │    │
+│  │  • LLM Strategy Engine (GPT-4/Claude)          │    │
+│  │  • Workflow Decomposer                         │    │
+│  │  • Adaptive Executor                           │    │
+│  │  • Form Inference Engine                       │    │
+│  │  • Error Enhancer                              │    │
+│  └─────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │            Journey System                       │    │
+│  │  • Journey Recorder & Player                   │    │
+│  │  • Journey Validator & Analyzer                │    │
+│  │  • Journey Discovery & Storage                 │    │
+│  └─────────────────────────────────────────────────┘    │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │         Playwright Driver (Stateful)            │    │
+│  │  • Persistent browser context                   │    │
+│  │  • Smart selector generation                    │    │
+│  │  • Automatic retry & recovery                   │    │
+│  └─────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────┐
+│                   Your Web Application                   │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Key Architectural Advantages:
+
+1. **Persistent Server** - No startup overhead, maintains state across tests
+2. **Intelligent Layer** - LLM-powered understanding, not just automation
+3. **Journey System** - Record once, replay with variations
+4. **Stateful Context** - Remembers login sessions, previous interactions
+5. **Adaptive Execution** - Adjusts strategy based on page behavior
 
 ## Built-in Test Playground
 

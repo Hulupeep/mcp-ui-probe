@@ -11,7 +11,8 @@ const PORT = process.env.PORT || process.env.TEST_PORT || 8081;
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'pages')));
+// Disable automatic index.html serving for root
+app.use(express.static(path.join(__dirname, 'pages'), { index: false }));
 
 // Log requests for debugging
 app.use((req, res, next) => {
