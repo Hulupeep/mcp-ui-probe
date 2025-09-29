@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UI-Probe Playground - Test Your Automation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .hero {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero .tagline {
+            font-size: 1.3rem;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.3rem 1rem;
+            background: #10b981;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+
+        .section {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h2 {
+            font-size: 1.8rem;
+            margin-bottom: 1.5rem;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 0.5rem;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .feature-card {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .feature-card h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            color: #667eea;
+        }
+
+        .feature-card p {
+            color: #666;
+            font-size: 0.95rem;
+        }
+
+        .test-pages {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .test-page-card {
+            padding: 1.5rem;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .test-page-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+
+        .test-page-card h3 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .test-page-card .description {
+            color: #666;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+
+        .test-page-card .features {
+            list-style: none;
+            font-size: 0.9rem;
+            color: #999;
+        }
+
+        .test-page-card .features li:before {
+            content: "✓ ";
+            color: #10b981;
+            font-weight: bold;
+            margin-right: 0.3rem;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+        }
+
+        .code-block .comment {
+            color: #64748b;
+        }
+
+        .code-block .string {
+            color: #10b981;
+        }
+
+        .code-block .keyword {
+            color: #667eea;
+        }
+
+        .quick-start {
+            background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin: 1.5rem 0;
+        }
+
+        .quick-start h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+
+        .quick-start ol {
+            margin-left: 1.5rem;
+        }
+
+        .quick-start li {
+            margin-bottom: 0.5rem;
+            color: #666;
+        }
+
+        .api-examples {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .api-example {
+            border-left: 4px solid #667eea;
+            padding-left: 1rem;
+        }
+
+        .api-example h4 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: white;
+        }
+
+        footer a {
+            color: white;
+            margin: 0 1rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 0.8rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: transform 0.3s ease;
+            margin-top: 1rem;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+        }
+
+        .journey-badge {
+            display: inline-block;
+            padding: 0.2rem 0.8rem;
+            background: #f59e0b;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            margin-left: 0.5rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero Section -->
+        <div class="hero">
+            <h1>🎯 UI-Probe Playground</h1>
+            <p class="tagline">Test Any Website in Plain English - No Code Required</p>
+            <div class="status-badge">✅ Playground Active</div>
+
+            <p>Welcome to the UI-Probe testing playground! This is your sandbox for exploring UI-Probe's powerful automation capabilities. Each test page demonstrates different features and challenges for web testing.</p>
+        </div>
+
+        <!-- How to Use Section -->
+        <div class="section">
+            <h2>🚀 How to Use the Playground</h2>
+
+            <div class="quick-start">
+                <h3>Quick Start with Claude</h3>
+                <ol>
+                    <li>Make sure the playground server is running: <code>npm run test:server</code></li>
+                    <li>In Claude, navigate to any test page below</li>
+                    <li>Use natural language or explicit commands to interact</li>
+                    <li>Watch UI-Probe handle complex scenarios automatically</li>
+                </ol>
+            </div>
+
+            <div class="api-examples">
+                <div class="api-example">
+                    <h4>Natural Language Example:</h4>
+                    <div class="code-block">
+                        <span class="comment"># Just describe what you want</span><br>
+                        <span class="string">"Test the signup form on the main page"</span><br>
+                        <span class="string">"Fill out the contact form with test data"</span><br>
+                        <span class="string">"Click all the buttons and verify they work"</span>
+                    </div>
+                </div>
+
+                <div class="api-example">
+                    <h4>Explicit Commands Example:</h4>
+                    <div class="code-block">
+                        <span class="comment"># Use specific commands for precise control</span><br>
+                        <span class="keyword">navigate</span> <span class="string">"http://localhost:8081/test"</span><br>
+                        <span class="keyword">fill_form</span> {<span class="string">"email"</span>: <span class="string">"test@example.com"</span>}<br>
+                        <span class="keyword">click_button</span> <span class="string">"Submit"</span><br>
+                        <span class="keyword">verify_page</span> {<span class="string">"expectedContent"</span>: [<span class="string">"Success"</span>]}
+                    </div>
+                </div>
+
+                <div class="api-example">
+                    <h4>Journey Recording Example:</h4>
+                    <div class="code-block">
+                        <span class="comment"># Record interactions for instant replay</span><br>
+                        <span class="keyword">journey_record_start</span> {<span class="string">"name"</span>: <span class="string">"Complete Signup"</span>}<br>
+                        <span class="comment"># Perform your interactions...</span><br>
+                        <span class="keyword">journey_record_stop</span> {<span class="string">"tags"</span>: [<span class="string">"auth"</span>]}<br>
+                        <span class="comment"># Replay later with:</span><br>
+                        <span class="keyword">journey_play</span> {<span class="string">"journeyId"</span>: <span class="string">"journey_123"</span>}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="section">
+            <h2>✨ Key Features</h2>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>🎯 Plain English Commands</h3>
+                    <p>Just describe what you want to test. No selectors, no code, just natural language.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🔧 Self-Healing Tests</h3>
+                    <p>Tests automatically adapt when UI changes. No more broken selectors!</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🤖 AI-Powered Intelligence</h3>
+                    <p>Smart form filling, element detection, and error recovery using GPT-4/Claude.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>⚛️ React Compatible</h3>
+                    <p>Handles React components, synthetic events, and modern JavaScript frameworks.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📁 File Upload Support</h3>
+                    <p>Test file uploads with drag-and-drop, multiple files, and validation.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🎬 Journey Recording <span class="journey-badge">NEW</span></h3>
+                    <p>Record interactions once, replay instantly. 80% faster test execution!</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📊 Deterministic JSON</h3>
+                    <p>Every action returns structured JSON for reliable automation and conditionals.</p>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🔍 Smart Validation</h3>
+                    <p>Comprehensive assertions with clear, human-friendly error messages.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Test Pages Section -->
+        <div class="section">
+            <h2>🧪 Test Pages</h2>
+            <p style="margin-bottom: 1.5rem; color: #666;">Each page demonstrates different testing scenarios and UI patterns:</p>
+
+            <div class="test-pages">
+                <a href="/test" class="test-page-card">
+                    <h3>📝 Main Test Page</h3>
+                    <p class="description">Complete signup form with validation, error handling, and success flow.</p>
+                    <ul class="features">
+                        <li>Form validation</li>
+                        <li>Error messages</li>
+                        <li>Success redirect</li>
+                        <li>Required fields</li>
+                    </ul>
+                </a>
+
+                <a href="/test/react-components" class="test-page-card">
+                    <h3>⚛️ React Components</h3>
+                    <p class="description">Test modern React patterns with cards, modals, and dynamic content.</p>
+                    <ul class="features">
+                        <li>Card interactions</li>
+                        <li>Modal dialogs</li>
+                        <li>Dynamic content</li>
+                        <li>React events</li>
+                    </ul>
+                </a>
+
+                <a href="/test/file-upload" class="test-page-card">
+                    <h3>📁 File Upload Testing</h3>
+                    <p class="description">Advanced file upload scenarios with drag-and-drop and validation.</p>
+                    <ul class="features">
+                        <li>Drag & drop zones</li>
+                        <li>Multiple files</li>
+                        <li>File validation</li>
+                        <li>Progress tracking</li>
+                    </ul>
+                </a>
+
+                <a href="/test/dropdowns" class="test-page-card">
+                    <h3>📋 Custom Dropdowns</h3>
+                    <p class="description">Various dropdown implementations from native to advanced libraries.</p>
+                    <ul class="features">
+                        <li>Native selects</li>
+                        <li>React Select</li>
+                        <li>Material UI</li>
+                        <li>Searchable lists</li>
+                    </ul>
+                </a>
+
+                <a href="/test/forms" class="test-page-card">
+                    <h3>📋 Forms Testing</h3>
+                    <p class="description">Every input type and form pattern for comprehensive testing.</p>
+                    <ul class="features">
+                        <li>All input types</li>
+                        <li>Radio & checkbox</li>
+                        <li>Textareas</li>
+                        <li>Date pickers</li>
+                    </ul>
+                </a>
+
+                <a href="/test/navigation" class="test-page-card">
+                    <h3>🔗 Navigation Testing</h3>
+                    <p class="description">Multi-page flows, routing, and navigation patterns.</p>
+                    <ul class="features">
+                        <li>Page routing</li>
+                        <li>Link navigation</li>
+                        <li>Back/forward</li>
+                        <li>Hash routing</li>
+                    </ul>
+                </a>
+
+                <a href="/test/dynamic" class="test-page-card">
+                    <h3>⚡ Dynamic Content</h3>
+                    <p class="description">JavaScript-driven UI updates, AJAX, and real-time changes.</p>
+                    <ul class="features">
+                        <li>AJAX loading</li>
+                        <li>Live updates</li>
+                        <li>Lazy loading</li>
+                        <li>Infinite scroll</li>
+                    </ul>
+                </a>
+
+                <a href="/test/validation" class="test-page-card">
+                    <h3>❌ Validation Scenarios</h3>
+                    <p class="description">Edge cases, error handling, and validation testing.</p>
+                    <ul class="features">
+                        <li>Input validation</li>
+                        <li>Error states</li>
+                        <li>Edge cases</li>
+                        <li>Recovery flows</li>
+                    </ul>
+                </a>
+            </div>
+        </div>
+
+        <!-- Journey System Section -->
+        <div class="section">
+            <h2>🎬 Journey Recording System <span class="journey-badge">NEW</span></h2>
+
+            <p>The Journey System lets you record interactions once and replay them instantly, eliminating 80% of rediscovery time!</p>
+
+            <div class="quick-start">
+                <h3>Try Journey Recording:</h3>
+                <ol>
+                    <li>Start recording: <code>journey_record_start {"name": "My Test"}</code></li>
+                    <li>Perform any interactions on the test pages</li>
+                    <li>Stop and save: <code>journey_record_stop {"tags": ["demo"]}</code></li>
+                    <li>Replay anytime: <code>journey_play {"journeyId": "journey_xxx"}</code></li>
+                </ol>
+            </div>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>🤖 AI-Powered</h3>
+                    <p>Automatic naming, tagging, and optimization recommendations.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>🔍 Smart Discovery</h3>
+                    <p>Find compatible journeys for any page automatically.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>✅ Context Validation</h3>
+                    <p>Ensures journeys only run when appropriate.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resources Section -->
+        <div class="section">
+            <h2>📚 Resources & Documentation</h2>
+
+            <div class="api-examples">
+                <div class="api-example">
+                    <h4>Documentation:</h4>
+                    <ul style="margin-left: 1.5rem; color: #666;">
+                        <li><a href="https://github.com/Hulupeep/mcp-ui-probe" style="color: #667eea;">GitHub Repository</a></li>
+                        <li><a href="https://github.com/Hulupeep/mcp-ui-probe/blob/main/docs/API_REFERENCE.md" style="color: #667eea;">API Reference</a></li>
+                        <li><a href="https://github.com/Hulupeep/mcp-ui-probe/blob/main/docs/JOURNEY_SYSTEM.md" style="color: #667eea;">Journey System Guide</a></li>
+                        <li><a href="https://github.com/Hulupeep/mcp-ui-probe/blob/main/docs/ARCHITECTURE.md" style="color: #667eea;">Architecture Overview</a></li>
+                    </ul>
+                </div>
+
+                <div class="api-example">
+                    <h4>Common Commands:</h4>
+                    <ul style="margin-left: 1.5rem; color: #666;">
+                        <li><code>navigate</code> - Go to a URL</li>
+                        <li><code>analyze_ui</code> - See what's on the page</li>
+                        <li><code>fill_form</code> - Fill out forms</li>
+                        <li><code>click_button</code> - Click elements</li>
+                        <li><code>run_flow</code> - Complete workflows</li>
+                        <li><code>journey_record_start</code> - Start recording</li>
+                        <li><code>journey_play</code> - Replay journey</li>
+                    </ul>
+                </div>
+            </div>
+
+            <a href="https://github.com/Hulupeep/mcp-ui-probe/issues" class="btn">Report Issue or Get Help →</a>
+        </div>
+    </div>
+
+    <footer>
+        <p>UI-Probe Playground v1.0.0 | Built with ❤️ for testers who hate writing selectors</p>
+        <div>
+            <a href="https://github.com/Hulupeep/mcp-ui-probe">GitHub</a>
+            <a href="https://github.com/Hulupeep/mcp-ui-probe/issues">Issues</a>
+            <a href="https://github.com/Hulupeep/mcp-ui-probe/discussions">Discussions</a>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Upload Test - UI Probe</title>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      color: #333;
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 10px;
+    }
+
+    .section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    /* Standard File Input */
+    .file-input-wrapper {
+      margin: 20px 0;
+    }
+
+    input[type="file"] {
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+    }
+
+    /* Custom File Upload Button */
+    .custom-file-upload {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .custom-file-upload:hover {
+      background: #0056b3;
+    }
+
+    .custom-file-upload input[type="file"] {
+      display: none;
+    }
+
+    /* Drag and Drop Zone */
+    .drop-zone {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      background: #fafafa;
+      transition: all 0.3s;
+      margin: 20px 0;
+      min-height: 150px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .drop-zone.dragover {
+      border-color: #007bff;
+      background: #e3f2fd;
+    }
+
+    .drop-zone.has-files {
+      border-color: #28a745;
+      background: #f0fff4;
+    }
+
+    .drop-zone-text {
+      color: #666;
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+
+    .drop-zone-button {
+      padding: 8px 16px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    /* File List Display */
+    .file-list {
+      margin-top: 20px;
+    }
+
+    .file-item {
+      padding: 10px;
+      margin: 5px 0;
+      background: #f8f9fa;
+      border-radius: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .file-info {
+      flex: 1;
+    }
+
+    .file-name {
+      font-weight: 500;
+      color: #333;
+    }
+
+    .file-size {
+      font-size: 12px;
+      color: #666;
+      margin-left: 10px;
+    }
+
+    .file-remove {
+      padding: 5px 10px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    /* Upload Button */
+    .upload-button {
+      padding: 12px 30px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+      transition: background 0.3s;
+    }
+
+    .upload-button:hover {
+      background: #218838;
+    }
+
+    .upload-button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    /* Progress Bar */
+    .progress-wrapper {
+      margin-top: 20px;
+      display: none;
+    }
+
+    .progress-bar {
+      height: 20px;
+      background: #f0f0f0;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #007bff;
+      width: 0;
+      transition: width 0.3s;
+    }
+
+    /* Status Messages */
+    .status-message {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      display: none;
+    }
+
+    .status-message.success {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+      display: block;
+    }
+
+    .status-message.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+      display: block;
+    }
+
+    /* Advanced Upload Zone (like GitHub/Google Drive) */
+    .advanced-upload {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .upload-area {
+      border: 2px dashed #007bff;
+      border-radius: 8px;
+      padding: 30px;
+      text-align: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .upload-icon {
+      font-size: 48px;
+      margin-bottom: 15px;
+    }
+
+    .upload-text {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    .upload-subtext {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <h1>File Upload Test Suite</h1>
+
+  <div class="section">
+    <h2>1. Standard File Input</h2>
+    <div class="file-input-wrapper">
+      <label for="standard-file">Choose file:</label><br>
+      <input type="file" id="standard-file" name="standard-file" accept=".jpg,.jpeg,.png,.pdf">
+    </div>
+    <div id="standard-output"></div>
+  </div>
+
+  <div class="section">
+    <h2>2. Multiple File Selection</h2>
+    <div class="file-input-wrapper">
+      <label for="multiple-files">Choose multiple files:</label><br>
+      <input type="file" id="multiple-files" name="multiple-files" multiple accept=".jpg,.jpeg,.png,.pdf,.doc,.docx">
+    </div>
+    <div id="multiple-output"></div>
+  </div>
+
+  <div class="section">
+    <h2>3. Custom Styled File Upload</h2>
+    <label class="custom-file-upload">
+      <input type="file" id="custom-file" accept="image/*">
+      <span>📁 Choose Image</span>
+    </label>
+    <div id="custom-output"></div>
+  </div>
+
+  <div class="section">
+    <h2>4. Drag and Drop Upload Zone</h2>
+    <div class="drop-zone" id="drop-zone">
+      <div class="drop-zone-text">
+        Drag and drop files here or click to browse
+      </div>
+      <button class="drop-zone-button" onclick="document.getElementById('drop-zone-input').click()">
+        Select Files
+      </button>
+      <input type="file" id="drop-zone-input" multiple style="display: none;">
+    </div>
+    <div class="file-list" id="drop-zone-files"></div>
+    <button class="upload-button" id="upload-button" disabled>Upload Files</button>
+    <div class="progress-wrapper" id="progress-wrapper">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+    </div>
+    <div class="status-message" id="status-message"></div>
+  </div>
+
+  <div class="section">
+    <h2>5. Advanced Upload (GitHub/Drive Style)</h2>
+    <div class="advanced-upload">
+      <div class="upload-area" id="advanced-upload-area">
+        <div class="upload-icon">☁️</div>
+        <div class="upload-text">Upload to Cloud</div>
+        <div class="upload-subtext">Drag files here or click to browse</div>
+        <input type="file" id="advanced-input" multiple style="display: none;">
+      </div>
+      <div class="file-list" id="advanced-files"></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>6. File Type Specific Uploads</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+      <div>
+        <label>Images Only:</label><br>
+        <input type="file" accept="image/*" id="image-only">
+      </div>
+      <div>
+        <label>PDFs Only:</label><br>
+        <input type="file" accept=".pdf" id="pdf-only">
+      </div>
+      <div>
+        <label>Documents:</label><br>
+        <input type="file" accept=".doc,.docx,.txt" id="doc-only">
+      </div>
+      <div>
+        <label>Videos:</label><br>
+        <input type="file" accept="video/*" id="video-only">
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Helper function to format file size
+    function formatFileSize(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+    }
+
+    // Standard file input handler
+    document.getElementById('standard-file').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        document.getElementById('standard-output').innerHTML =
+          `<div class="file-item">
+            <span class="file-name">${file.name}</span>
+            <span class="file-size">${formatFileSize(file.size)}</span>
+          </div>`;
+      }
+    });
+
+    // Multiple files handler
+    document.getElementById('multiple-files').addEventListener('change', function(e) {
+      const files = Array.from(e.target.files);
+      const output = files.map(file =>
+        `<div class="file-item">
+          <span class="file-name">${file.name}</span>
+          <span class="file-size">${formatFileSize(file.size)}</span>
+        </div>`
+      ).join('');
+      document.getElementById('multiple-output').innerHTML = output;
+    });
+
+    // Custom file input handler
+    document.getElementById('custom-file').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        document.getElementById('custom-output').innerHTML =
+          `<div class="file-item" style="margin-top: 10px;">
+            <span class="file-name">📷 ${file.name}</span>
+            <span class="file-size">${formatFileSize(file.size)}</span>
+          </div>`;
+      }
+    });
+
+    // Drag and Drop Zone
+    const dropZone = document.getElementById('drop-zone');
+    const dropZoneInput = document.getElementById('drop-zone-input');
+    const dropZoneFiles = document.getElementById('drop-zone-files');
+    const uploadButton = document.getElementById('upload-button');
+    let selectedFiles = [];
+
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, preventDefaults, false);
+      document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    // Highlight drop zone when item is dragged over it
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight(e) {
+      dropZone.classList.add('dragover');
+    }
+
+    function unhighlight(e) {
+      dropZone.classList.remove('dragover');
+    }
+
+    // Handle dropped files
+    dropZone.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      handleDroppedFiles([...files]);
+    }
+
+    // Handle file input change
+    dropZoneInput.addEventListener('change', function(e) {
+      handleDroppedFiles([...e.target.files]);
+    });
+
+    function handleDroppedFiles(files) {
+      selectedFiles = files;
+      displayFiles();
+      dropZone.classList.add('has-files');
+      uploadButton.disabled = files.length === 0;
+    }
+
+    function displayFiles() {
+      const html = selectedFiles.map((file, index) =>
+        `<div class="file-item">
+          <div class="file-info">
+            <span class="file-name">${file.name}</span>
+            <span class="file-size">${formatFileSize(file.size)}</span>
+          </div>
+          <button class="file-remove" onclick="removeFile(${index})">Remove</button>
+        </div>`
+      ).join('');
+      dropZoneFiles.innerHTML = html;
+    }
+
+    function removeFile(index) {
+      selectedFiles.splice(index, 1);
+      displayFiles();
+      if (selectedFiles.length === 0) {
+        dropZone.classList.remove('has-files');
+        uploadButton.disabled = true;
+      }
+    }
+
+    // Upload button handler
+    uploadButton.addEventListener('click', function() {
+      const progressWrapper = document.getElementById('progress-wrapper');
+      const progressFill = document.getElementById('progress-fill');
+      const statusMessage = document.getElementById('status-message');
+
+      progressWrapper.style.display = 'block';
+      uploadButton.disabled = true;
+
+      // Simulate upload progress
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        progressFill.style.width = progress + '%';
+
+        if (progress >= 100) {
+          clearInterval(interval);
+          statusMessage.className = 'status-message success';
+          statusMessage.textContent = `Successfully uploaded ${selectedFiles.length} file(s)!`;
+          statusMessage.style.display = 'block';
+
+          setTimeout(() => {
+            progressWrapper.style.display = 'none';
+            progressFill.style.width = '0';
+            selectedFiles = [];
+            displayFiles();
+            dropZone.classList.remove('has-files');
+            uploadButton.disabled = true;
+          }, 2000);
+        }
+      }, 200);
+    });
+
+    // Advanced upload area
+    const advancedArea = document.getElementById('advanced-upload-area');
+    const advancedInput = document.getElementById('advanced-input');
+    const advancedFiles = document.getElementById('advanced-files');
+
+    advancedArea.addEventListener('click', () => advancedInput.click());
+
+    advancedArea.addEventListener('dragenter', (e) => {
+      e.preventDefault();
+      advancedArea.style.opacity = '0.8';
+    });
+
+    advancedArea.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      advancedArea.style.opacity = '1';
+    });
+
+    advancedArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    advancedArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      advancedArea.style.opacity = '1';
+      const files = Array.from(e.dataTransfer.files);
+      displayAdvancedFiles(files);
+    });
+
+    advancedInput.addEventListener('change', (e) => {
+      const files = Array.from(e.target.files);
+      displayAdvancedFiles(files);
+    });
+
+    function displayAdvancedFiles(files) {
+      const html = files.map(file =>
+        `<div class="file-item">
+          <span class="file-name">☁️ ${file.name}</span>
+          <span class="file-size">${formatFileSize(file.size)}</span>
+        </div>`
+      ).join('');
+      advancedFiles.innerHTML = html;
+    }
+
+    // File type specific handlers
+    ['image-only', 'pdf-only', 'doc-only', 'video-only'].forEach(id => {
+      document.getElementById(id).addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          console.log(`${id}: ${file.name} (${formatFileSize(file.size)})`);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

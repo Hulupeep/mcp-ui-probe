@@ -29,6 +29,11 @@ app.post('/test/submit', (req, res) => {
   });
 });
 
+// Serve playground as root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'pages', 'playground.html'));
+});
+
 // Serve test pages
 app.get('/test', (req, res) => {
   res.sendFile(path.join(__dirname, 'pages', 'index.html'));
@@ -50,9 +55,25 @@ app.get('/test/validation', (req, res) => {
   res.sendFile(path.join(__dirname, 'pages', 'validation.html'));
 });
 
+// New test pages
+app.get('/test/react-components', (req, res) => {
+  res.sendFile(path.join(__dirname, 'pages', 'react-components.html'));
+});
+
+app.get('/test/file-upload', (req, res) => {
+  res.sendFile(path.join(__dirname, 'pages', 'file-upload.html'));
+});
+
+app.get('/test/dropdowns', (req, res) => {
+  res.sendFile(path.join(__dirname, 'pages', 'dropdowns.html'));
+});
+
 // Start server with error handling
 const server = app.listen(PORT, () => {
   console.log(`✅ Test server running at http://localhost:${PORT}`);
+  console.log('');
+  console.log('🎯 UI-Probe Playground:');
+  console.log(`   http://localhost:${PORT}/               - Playground Home (Start Here!)`);
   console.log('');
   console.log('📚 Available test pages:');
   console.log(`   http://localhost:${PORT}/test          - Main test page`);
@@ -60,10 +81,14 @@ const server = app.listen(PORT, () => {
   console.log(`   http://localhost:${PORT}/test/navigation - Navigation testing`);
   console.log(`   http://localhost:${PORT}/test/dynamic  - Dynamic content`);
   console.log(`   http://localhost:${PORT}/test/validation - Validation scenarios`);
+  console.log(`   http://localhost:${PORT}/test/react-components - React components`);
+  console.log(`   http://localhost:${PORT}/test/file-upload - File upload testing`);
+  console.log(`   http://localhost:${PORT}/test/dropdowns - Custom dropdowns`);
   console.log('');
   console.log('🧪 Test in Claude with:');
   console.log(`   analyze_ui "http://localhost:${PORT}/test/forms"`);
   console.log(`   run_flow(goal="Sign up as new user", url="http://localhost:${PORT}/test")`);
+  console.log(`   journey_record_start {"name": "My Test Journey"}`);
 });
 
 // Handle server errors
