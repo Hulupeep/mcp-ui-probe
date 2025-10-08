@@ -1,5 +1,7 @@
 # UI-Probe: Test Any Website in Plain English
 
+Warning Will Robinson! This is a work in progress. You ned to provide your own key so running it will cost you money. that said...openrouter has lots of free options
+
 ## The Problem
 
 Website testing is broken. You write hundreds of lines of code that breaks the moment a developer changes a button class from `btn-primary` to `button-primary`. Your tests fail not because the app is broken, but because someone moved a div or renamed an ID.
