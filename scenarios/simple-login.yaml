@@ -1,0 +1,31 @@
+name: simple-login
+description: Simple login form test
+baseUrl: http://localhost:8081/login
+timeout: 15000
+retries: 1
+
+steps:
+  # Type email
+  - type:
+      testId: email-input
+      text: test@example.com
+
+  # Type password
+  - type:
+      testId: password-input
+      text: password123
+
+  # Click login button
+  - click:
+      testId: login-button
+
+  # Wait for redirect or success message
+  - waitForSelector:
+      testId: dashboard
+      timeoutMs: 5000
+      state: visible
+
+  # Assert success
+  - assertText:
+      testId: welcome-message
+      contains: Welcome

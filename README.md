@@ -1,6 +1,16 @@
 # UI-Probe: Test Any Website in Plain English
 
-Warning Will Robinson! This is a work in progress. You ned to provide your own key so running it will cost you money. that said...openrouter has lots of free options
+## ⚠️ Important: LLM API Key Required
+
+UI-Probe uses AI to intelligently understand web pages and forms. **An OpenAI or Anthropic API key is required**.
+
+- **Cost**: ~$0.01-0.10 per test depending on complexity
+- **Fallback Mode**: Set `UI_PROBE_FALLBACK_MODE=true` for basic Playwright functionality without LLM
+- **Get API Key**:
+  - OpenAI: https://platform.openai.com/api-keys
+  - Anthropic: https://console.anthropic.com/
+
+Without a valid API key, operations will fail with clear error messages.
 
 ## The Problem
 
@@ -61,21 +71,21 @@ Unlike standard Playwright MCP tools that create a new JavaScript file for every
 
 #### 🧠 **AI-Powered Intelligence Built-In**
 
-- **LLM Strategy Engine** - Uses GPT-4/Claude to understand UI context and intent
-- **Workflow Decomposer** - Automatically breaks "Order a pizza" into logical steps
-- **Adaptive Executor** - Adjusts strategy when pages behave unexpectedly
-- **Error Enhancer** - Provides intelligent, actionable error messages
-- **Form Inference Engine** - Automatically understands form structure, validation rules, and generates appropriate test data
+- **🤖 LLM Strategy Engine** (requires API key) - Uses GPT-4/Claude to understand UI context and intent
+- **🤖 Workflow Decomposer** (requires API key) - Automatically breaks "Order a pizza" into logical steps
+- **🤖 Adaptive Executor** (requires API key) - Adjusts strategy when pages behave unexpectedly
+- **🤖 Error Enhancer** (requires API key) - Provides intelligent, actionable error messages
+- **🤖 Form Inference Engine** (requires API key) - Automatically understands form structure, validation rules, and generates appropriate test data
 
 #### 📼 **Journey Recording & Replay System**
 
 Complete journey management that no standard Playwright tool offers:
 
-- **Record once, replay forever** - Capture complex workflows and replay them
-- **Journey Validation** - Ensures recorded journeys remain valid
-- **Journey Analysis** - Identifies patterns and improvements
-- **Journey Discovery** - Automatically discovers new test paths
-- **Smart selector generation** - Creates resilient selectors that survive UI changes
+- **✅ Record once, replay forever** (works in fallback mode) - Capture complex workflows and replay them
+- **🤖 Journey Validation** (requires API key) - Ensures recorded journeys remain valid
+- **🤖 Journey Analysis** (requires API key) - Identifies patterns and improvements
+- **🤖 Journey Discovery** (requires API key) - Automatically discovers new test paths
+- **🤖 Smart selector generation** (requires API key) - Creates resilient selectors that survive UI changes
 
 #### 🎯 **Natural Language Goal Execution**
 
@@ -95,14 +105,14 @@ run_flow({ goal: "Sign up as a new user" })
 
 #### 📊 **Additional Unique Features**
 
-- **Built-in test playground** - Test pages included to try before deploying to your project
-- **Real-time monitoring** - Watch tests run with live feedback
-- **Claude-native** - Designed specifically for Claude Code CLI, not retrofitted
-- **Actually works for non-devs** - PMs, designers, QA can use it immediately
-- **Open source** - No vendor lock-in, customize as needed
-- **Semantic AI Resolution** - Smart hybrid that uses Playwright's semantic selectors first, then falls back to LLM intelligence only when needed
-- **No Code Required** - Unlike raw Playwright MCP where Claude must write test scripts, UI-Probe works immediately without any programming
-- **Deterministic JSON Responses** - Every action returns structured JSON that enables conditional logic and automation:
+- **✅ Built-in test playground** (works in fallback mode) - Test pages included to try before deploying to your project
+- **✅ Real-time monitoring** (works in fallback mode) - Watch tests run with live feedback
+- **✅ Claude-native** (works in fallback mode) - Designed specifically for Claude Code CLI, not retrofitted
+- **🤖 Actually works for non-devs** (requires API key) - PMs, designers, QA can use it immediately
+- **✅ Open source** (works in fallback mode) - No vendor lock-in, customize as needed
+- **🤖 Semantic AI Resolution** (requires API key) - Smart hybrid that uses Playwright's semantic selectors first, then falls back to LLM intelligence only when needed
+- **🤖 No Code Required** (requires API key) - Unlike raw Playwright MCP where Claude must write test scripts, UI-Probe works immediately without any programming
+- **✅ Deterministic JSON Responses** (works in fallback mode) - Every action returns structured JSON that enables conditional logic and automation:
 
 ```json
 {
@@ -180,7 +190,7 @@ claude                                                                       # 4
 ### Prerequisites
 - Node.js 18+ ([Download](https://nodejs.org) - just click "Next" through installer)
 - Claude Code CLI or any terminal
-- OpenAI or Anthropic API key for best results (optional - works without but poorer performance)
+- **OpenAI or Anthropic API key** (REQUIRED for intelligent features, see Cost Estimation below)
 
 ### System Requirements
 - **OS**: Windows, macOS, or Linux
@@ -196,22 +206,27 @@ claude                                                                       # 4
 npx mcp-ui-probe setup
 ```
 
-#### Step 2: Enable AI Intelligence (Optional but Recommended)
+#### Step 2: Configure LLM Provider (Required for Intelligent Features)
 
-For best results with intelligent form understanding, set your API key:
+UI-Probe requires an API key for intelligent form understanding and workflow execution:
 
 ```bash
 # Create a .env file in your current directory
 echo "OPENAI_API_KEY=your-key-here" > .env
 # OR for Anthropic
 echo "ANTHROPIC_API_KEY=your-key-here" > .env
+
+# Optional: Enable fallback mode for basic Playwright functionality without LLM
+echo "UI_PROBE_FALLBACK_MODE=true" >> .env
 ```
 
-**Note:** UI-Probe works without this, but AI features significantly improve:
-- Form field understanding
-- Error message clarity
-- Natural language processing
-- Smart element detection
+**Important:** Without a valid API key, intelligent features will not work:
+- 🤖 Form field inference and understanding
+- 🤖 Natural language workflow decomposition
+- 🤖 Smart error message enhancement
+- 🤖 Adaptive element detection
+
+See [Cost Estimation](#cost-estimation) section below for API usage costs.
 
 #### Step 3: Connect to Claude Code CLI
 
@@ -519,12 +534,70 @@ fill_form "http://localhost:8081/test/forms" {"firstName": "John", "email": "joh
 # Run complete flows
 run_flow(goal="Sign up as new user", url="http://localhost:8081/test")
 
+## Cost Estimation
+
+UI-Probe uses LLM API calls for intelligent features. Here's what to expect:
+
+| Operation | GPT-4 Tokens | Estimated Cost | Frequency |
+|-----------|--------------|----------------|-----------|
+| Navigate (basic) | 0 | $0.000 | Per page |
+| Navigate (with LLM analysis) | ~500 | $0.005 | Per page |
+| Form Analysis (LLM) | ~1000 | $0.010 | Per form |
+| Error Collection (LLM enhanced) | ~300 | $0.003 | Per test |
+| UI Analysis (LLM) | ~800 | $0.008 | Per page |
+| Complete Workflow (run_flow) | ~2000 | $0.020 | Per test |
+
+### Cost Examples:
+- **Per Test Suite** (10 tests with LLM): ~$0.30-$1.00
+- **Per Month** (1000 tests with LLM): ~$30-$100
+- **Fallback Mode**: $0.00 (no LLM calls)
+
+### Cost Optimization Tips:
+1. Use **fallback mode** for basic navigation and clicking
+2. Enable **LLM caching** to reduce repeated API calls
+3. Use explicit selectors when you know the exact element
+4. Reserve `run_flow` for complex workflows that truly need intelligence
+5. Monitor usage through your OpenAI/Anthropic dashboard
+
+## Fallback Mode
+
+UI-Probe can operate in fallback mode without LLM, providing basic Playwright functionality:
+
+### Enable Fallback Mode:
+```bash
+# In .env file:
+UI_PROBE_FALLBACK_MODE=true
+```
+
+### What Works in Fallback Mode (No API Key Required):
+- ✅ **Basic navigation** - `navigate(url)`
+- ✅ **Element clicking** - Using explicit selectors
+- ✅ **Form filling** - With explicit field names
+- ✅ **Screenshots** - Capture page state
+- ✅ **Simple assertions** - Check for element presence
+- ✅ **Journey replay** - Recorded journeys with explicit selectors
+
+### What Requires LLM (API Key Required):
+- 🤖 **Natural language workflows** - "Sign up as a new user"
+- 🤖 **Form inference** - Automatic form structure understanding
+- 🤖 **Smart element detection** - Finding elements without exact selectors
+- 🤖 **Error enhancement** - Intelligent error messages
+- 🤖 **Journey analysis** - AI-powered optimization
+- 🤖 **Adaptive execution** - Self-healing when UI changes
+
+**Recommendation**: Start with fallback mode for simple tests, add API key when you need intelligence.
+
 ## Configuration
 
 ### Basic (.env file)
 ```bash
-# Make UI-Probe smarter
+# Required for intelligent features (see Cost Estimation above)
 OPENAI_API_KEY=sk-...
+# OR
+ANTHROPIC_API_KEY=your-key
+
+# Optional: Use fallback mode without LLM
+UI_PROBE_FALLBACK_MODE=true
 
 # See the browser window
 HEADLESS=false
@@ -543,6 +616,11 @@ MAX_RETRIES=5
 
 # Take screenshots on failure
 SCREENSHOT_ON_FAILURE=true
+
+# LLM Configuration
+LLM_PROVIDER=openai  # or 'anthropic'
+LLM_MODEL=gpt-4-turbo-preview
+LLM_CACHE_ENABLED=true  # Reduce costs by caching responses
 ```
 
 ## Troubleshooting

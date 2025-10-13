@@ -1,10 +1,11 @@
 import { z } from 'zod';
+import { DetailedErrorInfo } from '../utils/errors.js';
 
 // Core MCP Server Types
 export interface MCPToolResult {
   success: boolean;
   data?: any;
-  error?: string;
+  error?: string | DetailedErrorInfo;
   artifacts?: Record<string, string>;
 }
 

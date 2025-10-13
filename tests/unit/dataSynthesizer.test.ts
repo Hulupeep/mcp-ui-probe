@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { DataSynthesizer } from '../../src/utils/dataSynthesizer.js';
 import { FormField } from '../../src/types/index.js';
 

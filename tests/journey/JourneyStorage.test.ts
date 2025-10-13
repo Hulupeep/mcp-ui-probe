@@ -208,7 +208,9 @@ describe('JourneyStorage', () => {
     it('should search journeys by query', async () => {
       const results = await storage.searchJourneys({
         query: 'login',
-        limit: 10
+        limit: 10,
+        sortBy: 'name',
+        sortOrder: 'asc'
       });
 
       expect(results.journeys).toHaveLength(1);
@@ -218,7 +220,9 @@ describe('JourneyStorage', () => {
     it('should search journeys by category', async () => {
       const results = await storage.searchJourneys({
         category: 'e-commerce',
-        limit: 10
+        limit: 10,
+        sortBy: 'name',
+        sortOrder: 'asc'
       });
 
       expect(results.journeys).toHaveLength(1);
@@ -228,7 +232,9 @@ describe('JourneyStorage', () => {
     it('should search journeys by tags', async () => {
       const results = await storage.searchJourneys({
         tags: ['forms'],
-        limit: 10
+        limit: 10,
+        sortBy: 'name',
+        sortOrder: 'asc'
       });
 
       expect(results.journeys).toHaveLength(1);

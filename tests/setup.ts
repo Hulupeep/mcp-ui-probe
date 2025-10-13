@@ -1,5 +1,5 @@
 // Test setup file
-import { jest } from '@jest/globals';
+import { jest, afterEach } from '@jest/globals';
 
 // Mock environment variables
 process.env.NODE_ENV = 'test';

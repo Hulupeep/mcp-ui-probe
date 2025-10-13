@@ -124,6 +124,10 @@ export class FormInferenceEngine {
       return result;
     } catch (error) {
       logger.error('Form inference failed', { error });
+      // If it's already a FormInferenceError, preserve the original message
+      if (error instanceof FormInferenceError) {
+        throw error;
+      }
       throw new FormInferenceError('Failed to infer form structure', error);
     }
   }

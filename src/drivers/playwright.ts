@@ -1,7 +1,7 @@
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
 import { Driver, UIAnalysis, UIElement, Form } from '../types/index.js';
-import { NavigationError } from '../utils/errors.js';
-import logger from '../utils/logger.js';
+import { NavigationError, BrowserLaunchError } from '../utils/errors.js';
+import logger, { debugLog } from '../utils/logger.js';
 import { v4 as uuidv4 } from 'uuid';
 
 export class PlaywrightDriver implements Driver {
@@ -12,12 +12,28 @@ export class PlaywrightDriver implements Driver {
   private networkErrors: any[] = [];
   private lastResponse: any = null;
   private lastNavigationStatus: number = 200;
+  private initializationAttempts: number = 0;
+  private maxInitAttempts: number = 3;
 
   async initialize(): Promise<void> {
+    this.initializationAttempts++;
+
+    const startTime = Date.now();
+    debugLog.operation('Browser initialization', {
+      attempt: this.initializationAttempts,
+      maxAttempts: this.maxInitAttempts,
+      platform: process.platform,
+      nodeVersion: process.version
+    });
+
     try {
-      this.browser = await chromium.launch({
-        headless: process.env.NODE_ENV === 'production',
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      // Try browser launch with fallback strategies
+      this.browser = await this.launchBrowserWithFallback();
+
+      debugLog.browserLaunch({
+        success: true,
+        durationMs: Date.now() - startTime,
+        browserVersion: this.browser.version()
       });
 
       this.context = await this.browser.newContext({
@@ -30,11 +46,126 @@ export class PlaywrightDriver implements Driver {
       // Set up error collection
       this.setupErrorCollection();
 
-      logger.info('Playwright driver initialized successfully');
-    } catch (error) {
-      logger.error('Failed to initialize Playwright driver', { error });
-      throw new NavigationError('Failed to initialize browser', error);
+      logger.info('Playwright driver initialized successfully', {
+        attempt: this.initializationAttempts,
+        durationMs: Date.now() - startTime,
+        browserVersion: this.browser.version()
+      });
+    } catch (error: any) {
+      const durationMs = Date.now() - startTime;
+
+      debugLog.error('Browser initialization', {
+        error,
+        attempt: this.initializationAttempts,
+        durationMs
+      });
+
+      // Build detailed error information
+      const errorDetails = {
+        attempt: this.initializationAttempts,
+        maxAttempts: this.maxInitAttempts,
+        platform: process.platform,
+        nodeVersion: process.version,
+        displayAvailable: !!process.env.DISPLAY,
+        systemError: error.message,
+        browserState: {
+          isConnected: false,
+          isOpen: false,
+          hasPage: false
+        }
+      };
+
+      throw new BrowserLaunchError(
+        `Failed to initialize browser after ${this.initializationAttempts} attempt(s): ${error.message}`,
+        errorDetails
+      );
     }
+  }
+
+  private async launchBrowserWithFallback(): Promise<Browser> {
+    const strategies = [
+      // Strategy 1: Try with headless based on DISPLAY availability
+      {
+        name: 'auto-headless',
+        config: {
+          headless: !process.env.DISPLAY,
+          args: ['--no-sandbox', '--disable-setuid-sandbox']
+        }
+      },
+      // Strategy 2: Force headless mode
+      {
+        name: 'force-headless',
+        config: {
+          headless: true,
+          args: ['--no-sandbox', '--disable-setuid-sandbox']
+        }
+      },
+      // Strategy 3: Headless with additional flags for Linux
+      {
+        name: 'headless-linux',
+        config: {
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--single-process'
+          ]
+        }
+      }
+    ];
+
+    let lastError: Error | null = null;
+
+    for (const strategy of strategies) {
+      try {
+        debugLog.browserLaunch({
+          strategy: strategy.name,
+          config: strategy.config
+        });
+
+        const browser = await chromium.launch(strategy.config);
+
+        logger.info('Browser launched successfully', {
+          strategy: strategy.name,
+          headless: strategy.config.headless
+        });
+
+        return browser;
+      } catch (error: any) {
+        lastError = error;
+        logger.warn(`Browser launch strategy '${strategy.name}' failed, trying next strategy`, {
+          error: error.message,
+          strategy: strategy.name
+        });
+
+        // Add exponential backoff delay before retrying
+        if (strategies.indexOf(strategy) < strategies.length - 1) {
+          const delayMs = Math.pow(2, strategies.indexOf(strategy)) * 500;
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+
+    // All strategies failed
+    throw new BrowserLaunchError(
+      'All browser launch strategies failed',
+      {
+        lastError: lastError?.message,
+        strategiesTried: strategies.map(s => s.name),
+        displayAvailable: !!process.env.DISPLAY,
+        platform: process.platform
+      }
+    );
+  }
+
+  getBrowserState(): { isConnected: boolean; isOpen: boolean; hasPage: boolean } {
+    return {
+      isConnected: this.browser?.isConnected() || false,
+      isOpen: this.browser !== null,
+      hasPage: this.page !== null
+    };
   }
 
   private setupErrorCollection(): void {
@@ -76,6 +207,9 @@ export class PlaywrightDriver implements Driver {
       await this.initialize();
     }
 
+    const startTime = Date.now();
+    debugLog.navigation(url, { waitUntil, timeout: 30000 });
+
     try {
       logger.info('Navigating to URL', { url });
       const response = await this.page!.goto(url, {
@@ -88,10 +222,33 @@ export class PlaywrightDriver implements Driver {
       this.consoleErrors = [];
       this.networkErrors = [];
 
-      logger.info('Navigation completed successfully', { url, currentUrl: this.page!.url() });
-    } catch (error) {
-      logger.error('Navigation failed', { url, error });
-      throw new NavigationError(`Failed to navigate to ${url}`, error);
+      const duration = Date.now() - startTime;
+      debugLog.navigationComplete(url, this.page!.url(), duration);
+      logger.info('Navigation completed successfully', { url, currentUrl: this.page!.url(), durationMs: duration });
+    } catch (error: any) {
+      const duration = Date.now() - startTime;
+
+      // Capture screenshot on navigation failure
+      const screenshotPath = await this.takeScreenshotOnFailure('navigate');
+
+      debugLog.error('Navigation', {
+        url,
+        error,
+        durationMs: duration,
+        screenshotPath
+      });
+
+      const errorDetails = {
+        url,
+        waitUntil,
+        timeout: 30000,
+        durationMs: duration,
+        browserState: this.getBrowserState(),
+        systemError: error.message,
+        screenshotPath
+      };
+
+      throw new NavigationError(`Failed to navigate to ${url}: ${error.message}`, errorDetails);
     }
   }
 
@@ -510,6 +667,36 @@ export class PlaywrightDriver implements Driver {
     } catch (error) {
       logger.error('Failed to take screenshot', { error });
       throw new NavigationError('Failed to take screenshot', error);
+    }
+  }
+
+  async takeScreenshotOnFailure(operation: string): Promise<string | null> {
+    try {
+      if (!this.page) {
+        debugLog.operation('Screenshot on failure skipped', { reason: 'No page available' });
+        return null;
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const screenshotPath = `/tmp/ui-probe-failure-${operation}-${timestamp}.png`;
+
+      await this.page.screenshot({
+        path: screenshotPath,
+        fullPage: true
+      });
+
+      logger.info('Failure screenshot captured', {
+        operation,
+        path: screenshotPath
+      });
+
+      return screenshotPath;
+    } catch (screenshotError) {
+      logger.warn('Failed to capture failure screenshot', {
+        operation,
+        error: screenshotError
+      });
+      return null;
     }
   }
 

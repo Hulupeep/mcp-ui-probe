@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { AdaptiveExecutor } from '../../src/llm/adaptiveExecutor.js';
 import { Page } from 'playwright';
 
@@ -11,15 +11,15 @@ describe('AdaptiveExecutor', () => {
 
     // Mock Playwright Page
     mockPage = {
-      goto: vi.fn(),
-      click: vi.fn(),
-      fill: vi.fn(),
-      $: vi.fn(),
-      $$: vi.fn(),
-      evaluate: vi.fn(),
-      waitForSelector: vi.fn(),
-      content: vi.fn().mockResolvedValue('<html></html>'),
-      url: vi.fn().mockReturnValue('http://test.com')
+      goto: jest.fn(),
+      click: jest.fn(),
+      fill: jest.fn(),
+      $: jest.fn(),
+      $$: jest.fn(),
+      evaluate: jest.fn(),
+      waitForSelector: jest.fn(),
+      content: (jest.fn() as any).mockResolvedValue('<html></html>'),
+      url: jest.fn().mockReturnValue('http://test.com')
     };
   });
 
@@ -47,7 +47,7 @@ describe('AdaptiveExecutor', () => {
       // First attempt fails
       mockPage.click.mockRejectedValueOnce(new Error('Element not found'));
       // Mock finding alternative
-      mockPage.$.mockResolvedValue({ click: vi.fn() });
+      mockPage.$.mockResolvedValue({ click: jest.fn() });
       mockPage.evaluate.mockResolvedValue(['button.btn-primary']);
 
       const result = await executor.execute(mockPage, action, { maxRetries: 2 });
@@ -181,9 +181,9 @@ describe('AdaptiveExecutor', () => {
 
       // Mock iframe handling
       const mockFrame = {
-        click: vi.fn().mockResolvedValue(undefined)
+        click: (jest.fn() as any).mockResolvedValue(undefined)
       };
-      mockPage.frames = vi.fn().mockReturnValue([mockFrame]);
+      mockPage.frames = jest.fn().mockReturnValue([mockFrame]);
 
       const result = await executor.execute(mockPage, action);
 

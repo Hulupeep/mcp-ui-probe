@@ -1,4 +1,4 @@
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { FormInferenceEngine } from '../../src/infer/form.js';
 import { UIAnalysis, Form } from '../../src/types/index.js';
 

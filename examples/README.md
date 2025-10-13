@@ -2,6 +2,26 @@
 
 Real-world examples showing how to use UI-Probe with Claude Code CLI to test websites using plain English.
 
+## ⚠️ Important: API Key Required
+
+Most examples require an OpenAI or Anthropic API key for intelligent features:
+
+```bash
+# Required: Set API key before running examples
+export OPENAI_API_KEY=sk-proj-your-key-here
+# OR
+export ANTHROPIC_API_KEY=sk-ant-your-key-here
+
+# Optional: Use fallback mode for simple operations (no API key needed)
+export UI_PROBE_FALLBACK_MODE=true
+```
+
+**Get API Keys:**
+- OpenAI: https://platform.openai.com/api-keys (~$0.01-0.10 per test)
+- Anthropic: https://console.anthropic.com/
+
+See [Cost Estimation](../README.md#cost-estimation) for detailed pricing.
+
 ## Quick Start with Claude Code CLI
 
 These examples are designed to be used directly in Claude Code CLI. Simply copy and paste the commands!

@@ -24,6 +24,8 @@ export * from './metrics.js';
 export * from './health.js';
 export * from './explainability.js';
 export * from './storage.js';
+export * from './tokenCounter.js';
+export * from './usageTracker.js';
 
 // CLI runner (if called directly)
 if (import.meta.url === `file://${process.argv[1]}`) {

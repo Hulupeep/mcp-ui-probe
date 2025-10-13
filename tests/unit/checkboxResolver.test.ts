@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { CheckboxResolver } from '../../src/utils/checkboxResolver.js';
 import { Page, Locator } from 'playwright';
 
@@ -12,18 +12,18 @@ describe('CheckboxResolver', () => {
 
     // Mock Playwright locator
     mockLocator = {
-      first: vi.fn().mockReturnThis(),
-      count: vi.fn().mockResolvedValue(1),
-      getAttribute: vi.fn(),
-      textContent: vi.fn(),
-      locator: vi.fn().mockReturnThis(),
-      all: vi.fn().mockResolvedValue([])
-    };
+      first: jest.fn().mockReturnThis(),
+      count: (jest.fn() as any).mockResolvedValue(1 as any) as any,
+      getAttribute: jest.fn() as any,
+      textContent: jest.fn() as any,
+      locator: jest.fn().mockReturnThis(),
+      all: (jest.fn() as any).mockResolvedValue([] as any) as any
+    } as any;
 
     // Mock Playwright page
     mockPage = {
-      locator: vi.fn().mockReturnValue(mockLocator)
-    };
+      locator: jest.fn().mockReturnValue(mockLocator as any)
+    } as any;
   });
 
   describe('resolveCheckbox', () => {
@@ -66,13 +66,13 @@ describe('CheckboxResolver', () => {
       // Mock checkboxes with different values but matching labels
       const mockCheckboxes = [
         {
-          getAttribute: vi.fn()
-            .mockResolvedValueOnce('tech') // value attribute
-            .mockResolvedValueOnce('checkbox-tech'), // id attribute
-          locator: vi.fn().mockReturnValue({
-            first: vi.fn().mockReturnThis(),
-            count: vi.fn().mockResolvedValue(1),
-            textContent: vi.fn().mockResolvedValue('Technology')
+          getAttribute: (jest.fn() as any)
+            .mockResolvedValueOnce('tech' as any) // value attribute
+            .mockResolvedValueOnce('checkbox-tech' as any), // id attribute
+          locator: jest.fn().mockReturnValue({
+            first: jest.fn().mockReturnThis(),
+            count: (jest.fn() as any).mockResolvedValue(1 as any),
+            textContent: (jest.fn() as any).mockResolvedValue('Technology' as any)
           })
         }
       ];
@@ -111,13 +111,13 @@ describe('CheckboxResolver', () => {
       // Mock checkboxes for fuzzy matching
       const mockCheckboxes = [
         {
-          getAttribute: vi.fn()
-            .mockResolvedValueOnce('tech') // value for "technology"
-            .mockResolvedValueOnce(null),
-          locator: vi.fn().mockReturnValue({
-            first: vi.fn().mockReturnThis(),
-            count: vi.fn().mockResolvedValue(1),
-            textContent: vi.fn().mockResolvedValue('Technology & Innovation')
+          getAttribute: (jest.fn() as any)
+            .mockResolvedValueOnce('tech' as any) // value for "technology"
+            .mockResolvedValueOnce(null as any),
+          locator: jest.fn().mockReturnValue({
+            first: jest.fn().mockReturnThis(),
+            count: (jest.fn() as any).mockResolvedValue(1 as any),
+            textContent: (jest.fn() as any).mockResolvedValue('Technology & Innovation' as any)
           })
         }
       ];
@@ -140,13 +140,13 @@ describe('CheckboxResolver', () => {
 
       const mockCheckboxes = [
         {
-          getAttribute: vi.fn()
-            .mockResolvedValueOnce(null) // no value
-            .mockResolvedValueOnce('interests-tech'), // id
-          locator: vi.fn().mockReturnValue({
-            first: vi.fn().mockReturnThis(),
-            count: vi.fn().mockResolvedValue(1),
-            textContent: vi.fn().mockResolvedValue('Technology')
+          getAttribute: (jest.fn() as any)
+            .mockResolvedValueOnce(null as any) // no value
+            .mockResolvedValueOnce('interests-tech' as any), // id
+          locator: jest.fn().mockReturnValue({
+            first: jest.fn().mockReturnThis(),
+            count: (jest.fn() as any).mockResolvedValue(1 as any),
+            textContent: (jest.fn() as any).mockResolvedValue('Technology' as any)
           })
         }
       ];
@@ -182,23 +182,23 @@ describe('CheckboxResolver', () => {
       // Mock label with for attribute
       const mockLabels = [
         {
-          textContent: vi.fn().mockResolvedValue('Technology'),
-          getAttribute: vi.fn().mockResolvedValue('tech-checkbox')
+          textContent: (jest.fn() as any).mockResolvedValue('Technology' as any),
+          getAttribute: (jest.fn() as any).mockResolvedValue('tech-checkbox' as any)
         }
       ];
 
       // Override page.locator for labels
-      mockPage.locator = vi.fn((selector: string) => {
+      mockPage.locator = jest.fn((selector: string) => {
         if (selector === 'label') {
           return {
-            all: vi.fn().mockResolvedValue(mockLabels)
+            all: (jest.fn() as any).mockResolvedValue(mockLabels as any)
           };
         }
         if (selector.includes('label[for=')) {
           return {
-            first: vi.fn().mockReturnThis(),
-            count: vi.fn().mockResolvedValue(1),
-            textContent: vi.fn().mockResolvedValue('Technology')
+            first: jest.fn().mockReturnThis(),
+            count: (jest.fn() as any).mockResolvedValue(1 as any),
+            textContent: (jest.fn() as any).mockResolvedValue('Technology' as any)
           };
         }
         return mockLocator;
@@ -206,9 +206,9 @@ describe('CheckboxResolver', () => {
 
       // Mock checkbox search
       const mockCheckboxWithLabel = {
-        first: vi.fn().mockReturnThis(),
-        count: vi.fn().mockResolvedValue(1),
-        getAttribute: vi.fn().mockResolvedValue('tech-checkbox')
+        first: jest.fn().mockReturnThis(),
+        count: (jest.fn() as any).mockResolvedValue(1 as any),
+        getAttribute: (jest.fn() as any).mockResolvedValue('tech-checkbox' as any)
       };
 
       const result = await resolver.resolveCheckbox(

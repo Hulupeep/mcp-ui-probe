@@ -40,7 +40,7 @@ describe('Full Flow Integration Tests', () => {
 
       expect(workflow).toHaveLength(6);
       expect(workflow).toContain('navigate');
-      expect(workflow).toContain('run_flow'); // Alternative to individual steps
+      expect(workflow).toContain('analyze_ui');
     });
 
     it('should handle error scenarios gracefully', async () => {

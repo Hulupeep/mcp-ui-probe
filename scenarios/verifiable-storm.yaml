@@ -1,0 +1,47 @@
+name: verifiable-storm
+description: Test the storm persona verifiable workflow
+baseUrl: http://localhost:3100/verifiable
+persona: storm
+timeout: 30000
+retries: 2
+captureScreenshotOnError: true
+
+setup:
+  - setGlobal:
+      __AMP_VERIFIABLE_EXECUTE_PATH: '/api/verifiable/test-execute'
+      __AMP_DISABLE_CHARTS: true
+
+steps:
+  # Click the storm tab to switch persona
+  - click:
+      role: tab
+      name: Storm Claim Analyst
+
+  # Click the launch button
+  - click:
+      testId: verifiable-launch-button
+
+  # Wait for the API response
+  - waitForResponse:
+      url: '/api/verifiable/test-execute'
+      method: POST
+      timeoutMs: 10000
+
+  # Assert storm-specific evidence
+  - assertText:
+      testId: verifiable-evidence
+      contains: 'Roof replacement approved'
+
+  # Assert proof deck is present
+  - assertText:
+      testId: verifiable-proof-deck
+      contains: 'Citation guardrail'
+
+  # Download the replay file
+  - download:
+      role: button
+      name: Download replay
+      saveAs: /tmp/storm-replay.json
+
+  # Take final screenshot
+  - screenshot: /tmp/verifiable-storm-final.png

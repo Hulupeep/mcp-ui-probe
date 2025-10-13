@@ -31,6 +31,10 @@ switch (command) {
     startMCPServer();
     break;
 
+  case 'run':
+    runScenario();
+    break;
+
   case 'test-server':
     startTestServer();
     break;
@@ -65,6 +69,23 @@ function startMCPServer() {
   child.on('error', (err) => {
     console.error('❌ Failed to start MCP server:', err);
     process.exit(1);
+  });
+}
+
+function runScenario() {
+  const runnerPath = join(__dirname, 'scenario', 'cliRunner.js');
+  const child = spawn('node', [runnerPath, ...args.slice(1)], {
+    stdio: 'inherit',
+    env: { ...process.env }
+  });
+
+  child.on('error', (err) => {
+    console.error('❌ Failed to run scenario:', err);
+    process.exit(1);
+  });
+
+  child.on('close', (code) => {
+    process.exit(code || 0);
   });
 }
 
@@ -220,6 +241,7 @@ Usage: npx mcp-ui-probe [command] [options]
 
 Commands:
   start, server    Start the MCP server for Claude integration
+  run              Run a scenario from YAML/JSON file (deterministic CLI mode)
   test-server      Start the built-in test server (default: port 8081)
   monitor          Start the monitoring dashboard (default: port 3002)
   init, setup      Install dependencies and set up Playwright
@@ -233,9 +255,18 @@ Quick Start:
   2. npx mcp-ui-probe test-server        # Start test environment
   3. npx mcp-ui-probe start              # Start MCP server
 
+  # CLI mode (deterministic, no LLM required)
+  4. npx mcp-ui-probe run --scenario scenarios/test.yaml --base-url http://localhost:3100
+
 Examples:
+  # MCP server mode
   npx mcp-ui-probe test-server --port 3000   # Use custom port
   npx mcp-ui-probe monitor --port 4000       # Use custom port
+
+  # CLI scenario mode
+  npx mcp-ui-probe run --scenario test.yaml --base-url http://localhost:3100
+  npx mcp-ui-probe run --scenario test.yaml --timeout 15000 --retries 3
+  npx mcp-ui-probe run --help                # Show run command help
 
 For Claude integration, add to your Claude config:
   claude mcp add ui-probe "npx mcp-ui-probe start"

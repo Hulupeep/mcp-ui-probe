@@ -40,6 +40,8 @@ import {
 } from '../types/journey.js';
 import { MCPUIError, NavigationError, FormInferenceError } from '../utils/errors.js';
 import { verifyPage, VerifyPageParams } from '../tools/verify_page.js';
+import { performHealthCheck, getSystemDiagnostics } from '../tools/health_check.js';
+import { getUsageStats, exportUsageStats } from '../tools/usage_stats.js';
 import logger from '../utils/logger.js';
 
 export class MCPServer {
@@ -316,6 +318,44 @@ export class MCPServer {
                 },
               },
               required: ['runId', 'format'],
+            },
+          },
+          {
+            name: 'health_check',
+            description: 'Check system health and browser availability for UI-Probe',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                verbose: {
+                  type: 'boolean',
+                  description: 'Include detailed system diagnostics',
+                  default: false
+                }
+              },
+            },
+          },
+          {
+            name: 'usage_stats',
+            description: 'Get LLM usage statistics, cost information, and recommendations for cost optimization',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                export: {
+                  type: 'boolean',
+                  description: 'Export detailed usage report to file',
+                  default: false
+                },
+                format: {
+                  type: 'string',
+                  enum: ['json', 'csv', 'markdown'],
+                  description: 'Export format (only used if export=true)',
+                  default: 'json'
+                },
+                filename: {
+                  type: 'string',
+                  description: 'Optional custom filename for export (only used if export=true)'
+                }
+              },
             },
           },
           // Journey Recording and Replay Tools
@@ -678,6 +718,14 @@ export class MCPServer {
             result = await this.handleValidateJourney(args as any);
             break;
 
+          case 'health_check':
+            result = await this.handleHealthCheck(args as any);
+            break;
+
+          case 'usage_stats':
+            result = await this.handleUsageStats(args as any);
+            break;
+
           default:
             throw new MCPUIError(`Unknown tool: ${name}`, 'E_UNKNOWN_TOOL');
         }
@@ -695,9 +743,17 @@ export class MCPServer {
       } catch (error) {
         logger.error('Tool execution failed', { toolName: name, error });
 
+        // Build enhanced error result
         const errorResult: MCPToolResult = {
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: error instanceof MCPUIError ? error.toJSON() : {
+            code: 'E_UNKNOWN',
+            message: error instanceof Error ? error.message : 'Unknown error',
+            details: {},
+            timestamp: new Date().toISOString(),
+            suggestions: ['Enable debug mode: UI_PROBE_DEBUG=true', 'Check logs for more details'],
+            stack: error instanceof Error ? error.stack : undefined
+          }
         };
 
         return {
@@ -2271,6 +2327,67 @@ export class MCPServer {
 
     } catch (error) {
       throw new MCPUIError('Failed to validate journey', 'E_VALIDATE_JOURNEY', error);
+    }
+  }
+
+  private async handleHealthCheck(params: any): Promise<MCPToolResult> {
+    try {
+      logger.info('Performing health check', { verbose: params.verbose });
+
+      const healthResult = await performHealthCheck();
+
+      let diagnostics = null;
+      if (params.verbose) {
+        diagnostics = await getSystemDiagnostics();
+      }
+
+      return {
+        success: healthResult.canLaunchBrowser,
+        data: {
+          health: healthResult,
+          diagnostics: params.verbose ? diagnostics : undefined,
+          summary: {
+            status: healthResult.canLaunchBrowser ? 'healthy' : 'unhealthy',
+            canTest: healthResult.canLaunchBrowser && healthResult.canAccessLocalhost,
+            recommendationCount: healthResult.recommendations.length
+          }
+        }
+      };
+    } catch (error) {
+      throw new MCPUIError('Health check failed', 'E_HEALTH_CHECK', error);
+    }
+  }
+
+  private async handleUsageStats(params: any): Promise<MCPToolResult> {
+    try {
+      logger.info('Retrieving usage stats', { export: params.export, format: params.format });
+
+      // Get usage statistics
+      const usageStats = await getUsageStats(this.llmStrategy);
+
+      // Handle export if requested
+      let exportResult: { success: boolean; filepath?: string; error?: string } | undefined = undefined;
+      if (params.export) {
+        const format = params.format || 'json';
+        exportResult = await exportUsageStats(this.llmStrategy, format, params.filename);
+
+        if (!exportResult.success) {
+          logger.warn('Usage stats export failed', { error: exportResult.error });
+        }
+      }
+
+      return {
+        success: usageStats.success,
+        data: {
+          stats: usageStats,
+          export: exportResult,
+          message: usageStats.warning || usageStats.error ||
+                   (usageStats.success ? 'Usage statistics retrieved successfully' : 'Usage statistics unavailable')
+        }
+      };
+    } catch (error) {
+      logger.error('Failed to get usage stats', { error });
+      throw new MCPUIError('Usage stats retrieval failed', 'E_USAGE_STATS', error);
     }
   }
 

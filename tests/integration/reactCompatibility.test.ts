@@ -1,3 +1,4 @@
+import { describe, test, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import { MCPServer } from '../../src/server/MCPServer.js';
 import { PlaywrightDriver } from '../../src/drivers/playwright.js';
 import logger from '../../src/utils/logger.js';
@@ -441,7 +442,7 @@ describe('React App Compatibility Tests', () => {
       // Try to click a non-existent element
       try {
         await server['handleClickButton']({ text: 'Non-existent Button' });
-        fail('Expected error for non-existent button');
+        throw new Error('Expected error for non-existent button');
       } catch (error: any) {
         expect(error.message).toContain('Button not found');
         expect(error.details?.triedSelectors).toBeGreaterThan(0);

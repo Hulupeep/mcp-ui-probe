@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { LLMStrategy } from '../../src/llm/llmStrategy.js';
 import { ParsedGoal } from '../../src/types/index.js';
 
@@ -7,19 +7,20 @@ describe('LLMStrategy', () => {
 
   beforeEach(() => {
     // Mock environment variables
-    vi.stubEnv('OPENAI_API_KEY', 'test-key');
+    process.env.OPENAI_API_KEY = 'test-key';
     strategy = new LLMStrategy();
   });
 
   afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.clearAllMocks();
+    // Environment cleanup
+    delete process.env.OPENAI_API_KEY;
+    jest.clearAllMocks();
   });
 
   describe('parseGoal', () => {
     it('should fall back to regex when no API key', async () => {
-      vi.stubEnv('OPENAI_API_KEY', '');
-      vi.stubEnv('ANTHROPIC_API_KEY', '');
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
       const strategyNoKey = new LLMStrategy();
 
       const result = await strategyNoKey.parseGoal('Click the Login button');
@@ -39,7 +40,7 @@ describe('LLMStrategy', () => {
       };
 
       // Mock OpenAI response
-      vi.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify(mockResponse));
+      jest.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify(mockResponse));
 
       const result = await strategy.parseGoal('Go to the login page');
 
@@ -59,7 +60,7 @@ describe('LLMStrategy', () => {
         submit: true
       };
 
-      vi.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify(mockResponse));
+      jest.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify(mockResponse));
 
       const result = await strategy.parseGoal('Fill the login form with username testuser and password testpass, then submit');
 
@@ -83,7 +84,7 @@ describe('LLMStrategy', () => {
         ]
       };
 
-      vi.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify(mockResponse));
+      jest.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify(mockResponse));
 
       const result = await strategy.parseGoal('Navigate to signup, fill email with test@example.com, and submit the form');
 
@@ -98,7 +99,7 @@ describe('LLMStrategy', () => {
     });
 
     it('should cache repeated queries', async () => {
-      const spy = vi.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify({ action: 'click', target: 'Login' }));
+      const spy = jest.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify({ action: 'click', target: 'Login' }));
 
       await strategy.parseGoal('Click Login');
       await strategy.parseGoal('Click Login'); // Same query
@@ -107,7 +108,7 @@ describe('LLMStrategy', () => {
     });
 
     it('should handle LLM errors gracefully', async () => {
-      vi.spyOn(strategy as any, 'callLLM').mockRejectedValue(new Error('API error'));
+      jest.spyOn(strategy as any, 'callLLM').mockRejectedValue(new Error('API error'));
 
       const result = await strategy.parseGoal('Click the Login button');
 
@@ -133,7 +134,7 @@ describe('LLMStrategy', () => {
         ]
       };
 
-      vi.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify(mockResponse));
+      jest.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify(mockResponse));
 
       const result = await strategy.interpretError(error, { selector: 'button[text="Login"]' });
 
@@ -154,7 +155,7 @@ describe('LLMStrategy', () => {
         ]
       };
 
-      vi.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify(mockResponse));
+      jest.spyOn(strategy as any, 'callLLM').mockResolvedValue(JSON.stringify(mockResponse));
 
       const result = await strategy.suggestAlternatives(failedSelector, pageContent);
 

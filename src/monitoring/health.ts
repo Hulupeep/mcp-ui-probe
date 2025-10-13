@@ -286,26 +286,39 @@ export class HealthService {
   private async checkDatabaseConnectivity(): Promise<void> {
     const startTime = Date.now();
 
+    let dataDir = '';
+    let errorDetails: any = {};
+
     try {
       // For now, we're using file-based storage, so check if we can write to the data directory
       const fs = await import('fs');
       const path = await import('path');
 
-      const dataDir = path.join(process.cwd(), 'data');
+      dataDir = path.join(process.cwd(), 'data');
       const testFile = path.join(dataDir, '.health-check');
+      const testData = JSON.stringify({ timestamp: new Date().toISOString() });
 
       // Ensure data directory exists
       await fs.promises.mkdir(dataDir, { recursive: true });
+      errorDetails.step = 'mkdir_complete';
 
       // Test write
-      await fs.promises.writeFile(testFile, JSON.stringify({ timestamp: new Date() }));
+      await fs.promises.writeFile(testFile, testData, 'utf8');
+      errorDetails.step = 'write_complete';
 
       // Test read
       const content = await fs.promises.readFile(testFile, 'utf8');
+      errorDetails.step = 'read_complete';
+
+      // Verify content
       const data = JSON.parse(content);
+      errorDetails.step = 'parse_complete';
 
       // Clean up
-      await fs.promises.unlink(testFile);
+      await fs.promises.unlink(testFile).catch(() => {
+        // Ignore cleanup errors
+      });
+      errorDetails.step = 'cleanup_complete';
 
       this.updateCheck('database', {
         name: 'Database Connectivity',
@@ -325,6 +338,13 @@ export class HealthService {
         status: 'unhealthy',
         error: error instanceof Error ? error.message : String(error),
         responseTime: Date.now() - startTime,
+        details: {
+          type: 'file-based',
+          dataDir: dataDir || 'unknown',
+          testSuccessful: false,
+          failureStep: errorDetails.step || 'unknown',
+          errorMessage: error instanceof Error ? error.message : String(error)
+        },
         lastChecked: new Date()
       });
     }
@@ -373,10 +393,8 @@ export class HealthService {
   }
 
   public async getOverallHealth(): Promise<OverallHealth> {
-    // Ensure we have recent checks
-    if (this.checks.size === 0) {
-      await this.runAllChecks();
-    }
+    // Ensure we have recent checks - always run to get fresh data
+    await this.runAllChecks();
 
     const checks = Array.from(this.checks.values());
     const healthyChecks = checks.filter(c => c.status === 'healthy').length;

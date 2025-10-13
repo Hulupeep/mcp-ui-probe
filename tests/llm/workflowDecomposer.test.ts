@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from '@jest/globals';
 import { WorkflowDecomposer } from '../../src/llm/workflowDecomposer.js';
 
 describe('WorkflowDecomposer', () => {

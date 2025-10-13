@@ -1,0 +1,36 @@
+name: verifiable-clinical
+description: Test the clinical persona verifiable workflow
+baseUrl: http://localhost:3100/verifiable
+persona: clinical
+timeout: 30000
+retries: 2
+captureScreenshotOnError: true
+
+setup:
+  - setGlobal:
+      __AMP_VERIFIABLE_EXECUTE_PATH: '/api/verifiable/test-execute'
+      __AMP_DISABLE_CHARTS: true
+
+steps:
+  # Click the launch button to start verifiable workflow
+  - click:
+      testId: verifiable-launch-button
+
+  # Wait for the API call to complete
+  - waitForResponse:
+      url: '/api/verifiable/test-execute'
+      method: POST
+      timeoutMs: 10000
+
+  # Assert the expected evidence text appears
+  - assertText:
+      testId: verifiable-evidence
+      contains: 'Patient receives an inflammation-focused action plan'
+
+  # Assert the proof deck shows citation guardrail
+  - assertText:
+      testId: verifiable-proof-deck
+      contains: 'Citation guardrail'
+
+  # Optional: Take a screenshot of final state
+  - screenshot: /tmp/verifiable-clinical-final.png

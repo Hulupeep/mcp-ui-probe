@@ -191,8 +191,8 @@ export class CheckboxResolver {
   }
 
   private calculateSimilarity(str1: string, str2: string): number {
-    if (str1 === str2) return 1;
     if (str1.length === 0 || str2.length === 0) return 0;
+    if (str1 === str2) return 1;
 
     // Check if one contains the other
     if (str1.includes(str2) || str2.includes(str1)) {

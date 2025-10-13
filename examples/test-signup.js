@@ -3,6 +3,16 @@
  *
  * This example shows how to test a user registration flow
  * using natural language instructions.
+ *
+ * ⚠️ REQUIRED: Set API key before running
+ * export OPENAI_API_KEY=sk-proj-your-key-here
+ * OR export ANTHROPIC_API_KEY=sk-ant-your-key-here
+ *
+ * Cost: ~$0.01-0.10 per test
+ * Get keys: https://platform.openai.com/api-keys
+ *
+ * Optional: Use fallback mode (basic Playwright without LLM)
+ * export UI_PROBE_FALLBACK_MODE=true
  */
 
 // Import the MCP client (adjust path as needed)

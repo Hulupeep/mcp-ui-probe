@@ -1,5 +1,202 @@
 # Troubleshooting Guide
 
+> **⚠️ IMPORTANT**: For **MCP timeout errors (-32001)**, see [TIMEOUT_FIXES.md](./TIMEOUT_FIXES.md) for comprehensive solutions including:
+> - OpenAI API timeout handling (60s default)
+> - Automatic retry logic with exponential backoff (2 retries default)
+> - Configurable timeout settings via environment variables
+> - Diagnostic commands and monitoring tools
+
+## 🔴 CRITICAL: LLM API Configuration Issues
+
+### "Invalid API key" or "401 Unauthorized"
+
+**This is a common issue - UI-Probe requires a valid LLM API key for intelligent features!**
+
+**Symptoms:**
+- Error: "Invalid API key provided"
+- Error: "401 Unauthorized"
+- Error: "Authentication failed"
+- Intelligent features fail silently
+
+**Solution:**
+```bash
+# Step 1: Get a valid API key
+# OpenAI: https://platform.openai.com/api-keys
+# Anthropic: https://console.anthropic.com/
+
+# Step 2: Add to .env file in your project directory
+echo "OPENAI_API_KEY=sk-proj-your-actual-key-here" > .env
+# OR
+echo "ANTHROPIC_API_KEY=sk-ant-your-actual-key-here" > .env
+
+# Step 3: Verify the key format
+# OpenAI keys start with: sk-proj- or sk-
+# Anthropic keys start with: sk-ant-
+
+# Step 4: Test the key
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer $OPENAI_API_KEY"
+# Should return list of models if valid
+
+# Step 5: Restart UI-Probe
+```
+
+**Common mistakes:**
+- Key has expired or been revoked
+- `.env` file in wrong directory (must be where you run commands)
+- Extra spaces or quotes around key
+- Using test/example key instead of real key
+- Account billing not set up
+
+### "Quota exceeded" or "429 Too Many Requests"
+
+**Symptoms:**
+- Error: "You exceeded your current quota"
+- Error: "Rate limit reached"
+- Tests work initially, then start failing
+- 429 HTTP status code
+
+**Solution:**
+```bash
+# Step 1: Check your usage and quota
+# OpenAI: https://platform.openai.com/usage
+# Anthropic: https://console.anthropic.com/usage
+
+# Step 2: Either purchase more credits/upgrade tier
+# OR enable fallback mode temporarily:
+echo "UI_PROBE_FALLBACK_MODE=true" >> .env
+
+# Step 3: Enable caching to reduce API usage
+echo "LLM_CACHE_ENABLED=true" >> .env
+echo "LLM_CACHE_TTL=3600" >> .env
+
+# Step 4: Monitor costs
+# Set up billing alerts in your provider dashboard
+```
+
+**Cost optimization:**
+- Use fallback mode for simple tests
+- Enable LLM caching
+- Use explicit selectors when possible
+- See [Cost Estimation](../README.md#cost-estimation) section
+
+### "Model not found" or "404 Model Error"
+
+**Symptoms:**
+- Error: "The model 'gpt-4' does not exist"
+- Error: "Model not found"
+- 404 HTTP status code
+
+**Solution:**
+```bash
+# Check your .env configuration
+cat .env | grep LLM_MODEL
+
+# Use correct model names:
+# For OpenAI:
+echo "LLM_MODEL=gpt-4-turbo-preview" >> .env
+# OR cheaper alternative:
+echo "LLM_MODEL=gpt-3.5-turbo" >> .env
+
+# For Anthropic:
+echo "LLM_PROVIDER=anthropic" >> .env
+echo "LLM_MODEL=claude-3-opus-20240229" >> .env
+
+# Verify account has access to model
+# GPT-4 requires paid OpenAI account
+```
+
+### Network connectivity to LLM providers
+
+**Symptoms:**
+- Error: "Failed to connect to API"
+- Error: "ECONNREFUSED" or "ETIMEDOUT"
+- Tests timeout or hang indefinitely
+
+**Solution:**
+```bash
+# Step 1: Test basic connectivity
+ping api.openai.com
+curl -I https://api.openai.com/v1/models
+
+# Step 2: Check for firewall/proxy issues
+# If behind corporate firewall, configure proxy:
+echo "HTTPS_PROXY=http://proxy.company.com:8080" >> .env
+
+# Step 3: Check API status
+# OpenAI: https://status.openai.com/
+# Anthropic: https://status.anthropic.com/
+
+# Step 4: Verify VPN not blocking access
+# Try disabling VPN temporarily
+
+# Step 5: Test with curl
+curl https://api.openai.com/v1/chat/completions \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "gpt-3.5-turbo", "messages": [{"role": "user", "content": "test"}]}'
+```
+
+### LLM features not working despite valid key
+
+**Symptoms:**
+- API key is valid
+- Basic navigation works
+- But `run_flow` or `infer_form` fail
+- No clear error messages
+
+**Solution:**
+```bash
+# Step 1: Check fallback mode isn't accidentally enabled
+cat .env | grep FALLBACK
+# If UI_PROBE_FALLBACK_MODE=true, LLM features are disabled
+
+# Step 2: Explicitly enable LLM
+echo "UI_PROBE_FALLBACK_MODE=false" > .env
+echo "OPENAI_API_KEY=your-key" >> .env
+
+# Step 3: Verify provider configuration
+echo "LLM_PROVIDER=openai" >> .env
+echo "LLM_MODEL=gpt-4-turbo-preview" >> .env
+
+# Step 4: Enable debug logging
+echo "DEBUG=true" >> .env
+echo "LLM_DEBUG=true" >> .env
+
+# Step 5: Test LLM directly
+node -e "
+const { OpenAI } = require('openai');
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+client.chat.completions.create({
+  model: 'gpt-3.5-turbo',
+  messages: [{ role: 'user', content: 'test' }]
+}).then(r => console.log('LLM working:', r.choices[0].message.content))
+  .catch(e => console.error('LLM failed:', e.message));
+"
+```
+
+### Cost monitoring and warnings
+
+**Setting up cost alerts:**
+
+```bash
+# OpenAI - Set up usage alerts:
+# 1. Visit https://platform.openai.com/account/billing/limits
+# 2. Set "Hard limit" (e.g., $50/month)
+# 3. Set "Soft limit" (e.g., $30/month for email alert)
+
+# Anthropic - Set up usage limits:
+# 1. Visit https://console.anthropic.com/account/limits
+# 2. Configure monthly spend limit
+# 3. Enable email notifications
+
+# Track costs in your tests:
+# UI-Probe includes cost metrics in test results
+const result = await ui_probe.run_flow({ goal: 'test' });
+console.log(`Cost: $${result.metrics.llmCost}`);
+console.log(`Tokens: ${result.metrics.tokens}`);
+```
+
 ## 🔴 CRITICAL: Browser Installation Issues
 
 ### "Navigation failed" or "Browser launch failed"

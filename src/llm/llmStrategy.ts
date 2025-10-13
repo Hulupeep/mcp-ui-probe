@@ -2,6 +2,8 @@ import { OpenAI } from 'openai';
 import { ParsedGoal } from '../types/index.js';
 import { GoalParser } from '../utils/goalParser.js';
 import logger from '../utils/logger.js';
+import { llmValidator } from './validator.js';
+import { UsageTracker } from '../monitoring/usageTracker.js';
 
 interface LLMConfig {
   provider?: 'openai' | 'anthropic';
@@ -10,6 +12,9 @@ interface LLMConfig {
   temperature?: number;
   cacheEnabled?: boolean;
   cacheTTL?: number;
+  fallbackMode?: boolean;
+  requestTimeout?: number;
+  maxRetries?: number;
 }
 
 interface ErrorInterpretation {
@@ -31,8 +36,13 @@ export class LLMStrategy {
   private config: LLMConfig;
   private cache: Map<string, { result: any; timestamp: number }>;
   private readonly DEFAULT_CACHE_TTL = 300000; // 5 minutes
+  private usageTracker?: UsageTracker;
 
   constructor(config?: LLMConfig) {
+    const fallbackMode = process.env.UI_PROBE_FALLBACK_MODE === 'true';
+    const requestTimeout = parseInt(process.env.LLM_REQUEST_TIMEOUT || '60000', 10);
+    const maxRetries = parseInt(process.env.LLM_MAX_RETRIES || '2', 10);
+
     this.config = {
       provider: process.env.OPENAI_API_KEY ? 'openai' : 'anthropic',
       model: 'gpt-4-turbo-preview',
@@ -40,27 +50,46 @@ export class LLMStrategy {
       temperature: 0.3,
       cacheEnabled: true,
       cacheTTL: this.DEFAULT_CACHE_TTL,
+      fallbackMode,
+      requestTimeout,
+      maxRetries,
       ...config
     };
 
     this.cache = new Map();
 
-    // Initialize API clients
-    if (process.env.OPENAI_API_KEY) {
+    // Initialize API clients only if not in fallback mode
+    if (!fallbackMode && process.env.OPENAI_API_KEY) {
       this.openai = new OpenAI({
         apiKey: process.env.OPENAI_API_KEY
       });
     }
 
     // Anthropic SDK not installed yet - will add support later
-    // if (process.env.ANTHROPIC_API_KEY) {
+    // if (!fallbackMode && process.env.ANTHROPIC_API_KEY) {
     //   this.anthropic = new Anthropic({
     //     apiKey: process.env.ANTHROPIC_API_KEY
     //   });
     // }
+
+    if (fallbackMode) {
+      logger.info('LLMStrategy initialized in fallback mode - using regex parser only');
+    }
+
+    // Initialize usage tracker if cost monitoring is enabled
+    if (process.env.UI_PROBE_COST_LIMITS !== 'false' && !fallbackMode) {
+      this.usageTracker = new UsageTracker();
+      logger.info('Usage tracking enabled for cost monitoring');
+    }
   }
 
   async parseGoal(goal: string): Promise<ParsedGoal> {
+    // Check if in fallback mode or LLM not available
+    if (this.config.fallbackMode || (!this.openai && !this.anthropic)) {
+      logger.debug('Using regex parser (fallback mode or no LLM)', { goal });
+      return GoalParser.parse(goal);
+    }
+
     // Check cache first
     if (this.config.cacheEnabled) {
       const cached = this.getFromCache(goal);
@@ -70,47 +99,65 @@ export class LLMStrategy {
       }
     }
 
-    // Fall back to regex parser if no API keys available
-    if (!this.openai && !this.anthropic) {
-      logger.info('No LLM API keys configured, using regex parser');
-      return GoalParser.parse(goal);
-    }
+    // Retry logic for LLM calls
+    const maxRetries = this.config.maxRetries || 2;
+    let lastError: Error | null = null;
 
-    try {
-      const prompt = this.buildGoalParsingPrompt(goal);
-      const response = await this.callLLM(prompt);
-      const parsed = JSON.parse(response);
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        logger.debug(`Attempting LLM goal parsing (attempt ${attempt + 1}/${maxRetries + 1})`, { goal });
 
-      // Validate and normalize the response
-      const result = this.normalizeGoalResponse(parsed);
+        const prompt = this.buildGoalParsingPrompt(goal);
+        const response = await this.callLLM(prompt, 'parseGoal');
+        const parsed = JSON.parse(response);
 
-      // Cache the result
-      if (this.config.cacheEnabled) {
-        this.addToCache(goal, result);
+        // Validate and normalize the response
+        const result = this.normalizeGoalResponse(parsed);
+
+        // Cache the result
+        if (this.config.cacheEnabled) {
+          this.addToCache(goal, result);
+        }
+
+        logger.debug('LLM goal parsing succeeded', { goal, attempt: attempt + 1 });
+        return result;
+      } catch (error: any) {
+        lastError = error;
+        logger.warn(`LLM parsing attempt ${attempt + 1} failed`, {
+          error: error.message,
+          stack: error.stack,
+          response: error.response?.data,
+          willRetry: attempt < maxRetries
+        });
+
+        // Wait before retry (exponential backoff)
+        if (attempt < maxRetries) {
+          const delayMs = Math.min(1000 * Math.pow(2, attempt), 5000);
+          logger.debug(`Waiting ${delayMs}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
       }
-
-      return result;
-    } catch (error: any) {
-      logger.error('LLM parsing failed, falling back to regex', {
-        error: error.message,
-        stack: error.stack,
-        response: error.response?.data
-      });
-      return GoalParser.parse(goal);
     }
+
+    // All retries failed, fall back to regex parser
+    logger.warn('All LLM parsing attempts failed, falling back to regex parser', {
+      error: lastError?.message,
+      goal
+    });
+    return GoalParser.parse(goal);
   }
 
   async interpretError(error: string, context?: any): Promise<ErrorInterpretation> {
-    if (!this.openai && !this.anthropic) {
+    if (this.config.fallbackMode || (!this.openai && !this.anthropic)) {
       return this.getDefaultErrorInterpretation(error);
     }
 
     try {
       const prompt = this.buildErrorInterpretationPrompt(error, context);
-      const response = await this.callLLM(prompt);
+      const response = await this.callLLM(prompt, 'interpretError');
       return JSON.parse(response);
     } catch (err) {
-      logger.error('Error interpretation failed', { err });
+      logger.warn('Error interpretation failed, using default', { err });
       return this.getDefaultErrorInterpretation(error);
     }
   }
@@ -119,19 +166,49 @@ export class LLMStrategy {
    * Simple text completion for general purposes
    */
   async complete(prompt: string): Promise<string> {
+    // Check cost limits
+    if (this.usageTracker?.hasExceededMaxCost()) {
+      const stats = this.usageTracker.getStats();
+      throw new Error(
+        `Maximum LLM cost threshold exceeded ($${stats.totalCost.toFixed(2)}). ` +
+        `Further LLM operations are blocked.`
+      );
+    }
+
     try {
       if (this.config.provider === 'openai' && this.openai) {
-        const completion = await this.openai.chat.completions.create({
-          model: this.config.model || 'gpt-4-turbo-preview',
-          messages: [
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: this.config.maxTokens,
-          temperature: this.config.temperature
+        // Add timeout to completion calls
+        const timeoutMs = this.config.requestTimeout || 60000;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => {
+            reject(new Error(`OpenAI completion timed out after ${timeoutMs}ms`));
+          }, timeoutMs);
         });
+
+        const completion = await Promise.race([
+          this.openai.chat.completions.create({
+            model: this.config.model || 'gpt-4-turbo-preview',
+            messages: [
+              {
+                role: 'user',
+                content: prompt
+              }
+            ],
+            max_tokens: this.config.maxTokens,
+            temperature: this.config.temperature
+          }),
+          timeoutPromise
+        ]);
+
+        // Record token usage
+        if (this.usageTracker && completion.usage) {
+          this.usageTracker.recordUsage(
+            'complete',
+            completion,
+            this.config.model || 'gpt-4-turbo-preview',
+            'openai'
+          );
+        }
 
         return completion.choices[0]?.message?.content || '';
       }
@@ -145,39 +222,70 @@ export class LLMStrategy {
   }
 
   async suggestAlternatives(failedSelector: string, pageContent: string): Promise<string[]> {
-    if (!this.openai && !this.anthropic) {
+    if (this.config.fallbackMode || (!this.openai && !this.anthropic)) {
       return this.getDefaultAlternatives(failedSelector);
     }
 
     try {
       const prompt = this.buildAlternativeSelectorPrompt(failedSelector, pageContent);
-      const response = await this.callLLM(prompt);
+      const response = await this.callLLM(prompt, 'suggestAlternatives');
       const result = JSON.parse(response);
       return result.alternatives || [];
     } catch (error) {
-      logger.error('Alternative suggestion failed', { error });
+      logger.warn('Alternative suggestion failed, using defaults', { error });
       return this.getDefaultAlternatives(failedSelector);
     }
   }
 
-  private async callLLM(prompt: string): Promise<string> {
+  private async callLLM(prompt: string, operation: string = 'llm_call'): Promise<string> {
+    // Check if we've exceeded cost limits before making the call
+    if (this.usageTracker?.hasExceededMaxCost()) {
+      const stats = this.usageTracker.getStats();
+      throw new Error(
+        `Maximum LLM cost threshold exceeded ($${stats.totalCost.toFixed(2)}). ` +
+        `Further LLM operations are blocked. Set UI_PROBE_MAX_COST higher or reset usage tracking.`
+      );
+    }
+
     if (this.config.provider === 'openai' && this.openai) {
-      const completion = await this.openai.chat.completions.create({
-        model: this.config.model || 'gpt-4-turbo-preview',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a UI testing assistant. Return only valid JSON responses without any markdown formatting or code blocks.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        max_tokens: this.config.maxTokens,
-        temperature: this.config.temperature,
-        response_format: { type: "json_object" }
+      // Create timeout promise
+      const timeoutMs = this.config.requestTimeout || 60000;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(new Error(`OpenAI API call timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
       });
+
+      // Race between API call and timeout
+      const completion = await Promise.race([
+        this.openai.chat.completions.create({
+          model: this.config.model || 'gpt-4-turbo-preview',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a UI testing assistant. Return only valid JSON responses without any markdown formatting or code blocks.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: this.config.maxTokens,
+          temperature: this.config.temperature,
+          response_format: { type: "json_object" }
+        }),
+        timeoutPromise
+      ]);
+
+      // Record token usage
+      if (this.usageTracker && completion.usage) {
+        this.usageTracker.recordUsage(
+          operation,
+          completion,
+          this.config.model || 'gpt-4-turbo-preview',
+          'openai'
+        );
+      }
 
       const content = completion.choices[0]?.message?.content || '{}';
 
@@ -402,5 +510,12 @@ Suggest alternative selectors that might work. Return JSON:
     }
 
     return alternatives;
+  }
+
+  /**
+   * Get the usage tracker instance (for accessing cost monitoring data)
+   */
+  getUsageTracker(): UsageTracker | undefined {
+    return this.usageTracker;
   }
 }

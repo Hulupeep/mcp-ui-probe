@@ -1,0 +1,98 @@
+{
+  "timestamp": "2025-10-13T11:36:51.608Z",
+  "summary": {
+    "total": 8,
+    "passed": 2,
+    "failed": 6,
+    "successRate": 25
+  },
+  "results": [
+    {
+      "test": "Navigate to valid page",
+      "status": "FAIL",
+      "details": {
+        "pass": false,
+        "message": "Navigation success=false, is404=undefined",
+        "details": {
+          "success": false,
+          "error": "MCP error -32001: Request timed out"
+        }
+      }
+    },
+    {
+      "test": "Detect 404 page by content",
+      "status": "PASS",
+      "details": {
+        "pass": true,
+        "message": "Should detect 404 from content. Success=false, is404=undefined",
+        "details": {
+          "success": false,
+          "error": "MCP error -32001: Request timed out"
+        }
+      }
+    },
+    {
+      "test": "Detect real 404 by HTTP status",
+      "status": "PASS",
+      "details": {
+        "pass": true,
+        "message": "Should detect 404 from HTTP status. Success=false, status=undefined",
+        "details": {
+          "success": false,
+          "error": "MCP error -32001: Request timed out"
+        }
+      }
+    },
+    {
+      "test": "Click button by text",
+      "status": "FAIL",
+      "details": {
+        "pass": false,
+        "message": "Button click success=false",
+        "details": {
+          "success": false,
+          "error": "MCP error -32001: Request timed out"
+        }
+      }
+    },
+    {
+      "test": "Analyze page UI",
+      "status": "FAIL",
+      "details": {
+        "pass": false,
+        "message": "Found 0 forms, 0 buttons",
+        "details": {
+          "success": false,
+          "error": "MCP error -32001: Request timed out"
+        }
+      }
+    },
+    {
+      "test": "Fill form with invalid data should fail",
+      "status": "FAIL",
+      "details": {
+        "pass": false,
+        "message": "Could not find login form"
+      }
+    },
+    {
+      "test": "run_flow with button click goal",
+      "status": "FAIL",
+      "details": {
+        "message": "Clicked button: undefined, Filled form: undefined",
+        "details": {
+          "success": false,
+          "error": "MCP error -32001: Request timed out"
+        }
+      }
+    },
+    {
+      "test": "Interact with custom dropdown",
+      "status": "FAIL",
+      "details": {
+        "pass": false,
+        "message": "Could not find signup form"
+      }
+    }
+  ]
+}

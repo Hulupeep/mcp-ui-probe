@@ -16,9 +16,16 @@ const mockPage = {
 describe('JourneyValidator', () => {
   let validator: JourneyValidator;
   let mockJourney: Journey;
+  let mockStorage: any;
 
   beforeEach(() => {
-    validator = new JourneyValidator();
+    mockStorage = {
+      loadJourney: jest.fn(),
+      saveJourney: jest.fn(),
+      deleteJourney: jest.fn(),
+      listJourneys: jest.fn()
+    };
+    validator = new JourneyValidator(mockStorage);
 
     mockJourney = {
       id: 'test-journey',
@@ -50,7 +57,7 @@ describe('JourneyValidator', () => {
         ],
         pageState: {
           loggedIn: false,
-          userType: 'guest'
+          userRole: 'guest'
         }
       },
       steps: [
