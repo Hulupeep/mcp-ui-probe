@@ -84,11 +84,11 @@ export class PlaywrightDriver implements Driver {
 
   private async launchBrowserWithFallback(): Promise<Browser> {
     const strategies = [
-      // Strategy 1: Try with headless based on DISPLAY availability
+      // Strategy 1: Default to headless unless explicitly disabled
       {
         name: 'auto-headless',
         config: {
-          headless: !process.env.DISPLAY,
+          headless: process.env.HEADLESS !== 'false',
           args: ['--no-sandbox', '--disable-setuid-sandbox']
         }
       },
@@ -501,13 +501,35 @@ export class PlaywrightDriver implements Driver {
           const submitButton = form.querySelector('button[type="submit"], input[type="submit"]') ||
                               form.querySelector('button:not([type])');
 
+          // Generate better submit selector by combining type and text
+          let submitSelector = 'button[type="submit"]';
+          let submitText = 'Submit';
+
+          if (submitButton) {
+            submitText = submitButton.textContent?.trim() || 'Submit';
+
+            // Prioritize type="submit" selector, or use text-based selector for better accuracy
+            if (submitButton.getAttribute('type') === 'submit') {
+              submitSelector = 'button[type="submit"]';
+            } else {
+              // Use text-based selector for buttons without type="submit"
+              const baseSelector = generateSelector(submitButton);
+              // Make it more specific by combining with text if the selector is generic
+              if (baseSelector.startsWith('.') && submitText) {
+                submitSelector = `${baseSelector}:has-text("${submitText}")`;
+              } else {
+                submitSelector = baseSelector;
+              }
+            }
+          }
+
           forms.push({
             name: form.getAttribute('name') || form.id || `form_${formIndex}`,
             selector: generateSelector(form),
             fields,
             submit: {
-              selector: submitButton ? generateSelector(submitButton) : 'button[type="submit"]',
-              text: submitButton?.textContent?.trim() || 'Submit'
+              selector: submitSelector,
+              text: submitText
             }
           });
         });
