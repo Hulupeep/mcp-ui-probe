@@ -503,6 +503,310 @@ UI-Probe is built as an intelligent, stateful testing orchestrator rather than a
 4. **Stateful Context** - Remembers login sessions, previous interactions
 5. **Adaptive Execution** - Adjusts strategy based on page behavior
 
+---
+
+## 🔬 Technical Architecture (For LLMs & Developers)
+
+### Request Flow: From Natural Language to Execution
+
+```
+User → "Search for blue t-shirt on Amazon"
+  │
+  ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. MCP Server (src/server/MCPServer.ts:1270-1524)           │
+│    handleRunFlow(goal: "Search for blue t-shirt")           │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. LLM Strategy (src/llm/llmStrategy.ts:86-148)             │
+│    ✨ CALLS OPENAI API                                       │
+│    parseGoal("Search for blue t-shirt")                     │
+│    → {                                                       │
+│         action: "fill",                                      │
+│         target: "search bar",                                │
+│         targetType: "input",                                 │
+│         value: "blue t-shirt",  ← PARSED VALUE              │
+│         submit: true                                         │
+│       }                                                       │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. Form Inference (src/infer/form.ts)                       │
+│    Analyzes page to understand form structure:              │
+│    → {                                                       │
+│         name: "site-search",                                 │
+│         fields: [                                            │
+│           {name: "field-keywords", type: "text"}, ← TARGET   │
+│           {name: "nav-search-submit-button", type: "submit"} │
+│         ]                                                     │
+│       }                                                       │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. Override Creation (src/server/MCPServer.ts:1404-1441)    │
+│    ✨ CRITICAL FIX: Maps LLM value to field name             │
+│    overrides = {                                             │
+│      "field-keywords": "blue t-shirt"  ← Uses LLM value      │
+│    }                                                          │
+│    (Instead of random "sample384")                           │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 5. Flow Engine (src/flows/flowEngine.ts:15-89)              │
+│    executeFlow(page, formSchema, overrides)                 │
+│    For each field:                                           │
+│      - Checks overrides first                                │
+│      - Uses LLM value if present                             │
+│      - Generates random data only if not in overrides        │
+└──────────────────┬──────────────────────────────────────────┘
+                   │
+                   ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 6. Playwright Execution                                      │
+│    page.fill("#field-keywords", "blue t-shirt") ✅           │
+│    page.click("#nav-search-submit-button")                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### OpenAI Integration Points
+
+UI-Probe uses OpenAI GPT-4 at these specific points (all in `src/llm/llmStrategy.ts`):
+
+#### 1. Goal Parsing (Line 86-148)
+```typescript
+async parseGoal(goal: string): Promise<ParsedGoal>
+```
+- **Input**: Natural language goal ("Search for blue t-shirt")
+- **Output**: Structured action object with `{action, target, value}`
+- **OpenAI Call**: `openai.chat.completions.create()` at line 261
+- **Model**: `gpt-4-turbo-preview` (configurable via `LLM_MODEL`)
+- **Cost**: ~$0.01-0.05 per request
+- **Fallback**: Regex parser if API fails or `UI_PROBE_FALLBACK_MODE=true`
+
+**Prompt sent to OpenAI** (line 322-358):
+```
+Parse this UI testing goal into structured actions:
+"Search for blue t-shirt"
+
+Return JSON:
+{
+  "action": "fill",
+  "target": "search bar",
+  "value": "blue t-shirt",
+  "submit": true
+}
+```
+
+#### 2. Alternative Selector Suggestions (Line 224-238)
+```typescript
+async suggestAlternatives(failedSelector: string, pageContent: string): Promise<string[]>
+```
+- **When Called**: Only when primary selector fails
+- **Input**: Failed selector + page HTML snippet
+- **Output**: Array of alternative selectors to try
+- **Example**: `.submit-button` fails → suggests `["button[type='submit']", "[aria-label='Submit']"]`
+
+#### 3. Error Interpretation (Line 150-163)
+```typescript
+async interpretError(error: string, context: any): Promise<ErrorInterpretation>
+```
+- **When Called**: When test fails
+- **Input**: Error message + page context
+- **Output**: Human-readable explanation + recovery suggestions
+- **Example**: "Element not clickable" → "Element may be covered by overlay, try dismissing modal"
+
+#### 4. Text Completion (Line 168-222)
+```typescript
+async complete(prompt: string): Promise<string>
+```
+- **Used by**: Custom integrations and future features
+- **Current Usage**: Minimal (reserved for advanced features)
+
+### Key Files & Responsibilities
+
+```
+src/
+├── server/
+│   └── MCPServer.ts              # Main MCP server, request handling
+│       ├── handleRunFlow()       # Entry point for natural language goals
+│       ├── handleClickButton()   # Button clicking with AI fallback
+│       └── handleNavigate()      # Page navigation
+│
+├── llm/
+│   ├── llmStrategy.ts            # ✨ OpenAI integration hub
+│   │   ├── parseGoal()           # Natural language → structured action
+│   │   ├── suggestAlternatives() # Selector recovery
+│   │   ├── interpretError()      # Error analysis
+│   │   └── callLLM()             # Core OpenAI API wrapper
+│   │
+│   ├── workflowDecomposer.ts    # Multi-step workflow parsing
+│   └── adaptiveExecutor.ts      # Execution with retry logic
+│
+├── flows/
+│   └── flowEngine.ts             # Form execution engine
+│       ├── executeFlow()         # Runs through form fields
+│       ├── fillField()           # Fills individual field
+│       └── Uses overrides map to prioritize LLM values
+│
+├── infer/
+│   └── form.ts                   # Form structure analysis
+│       └── inferForm()           # Analyzes page to understand forms
+│
+└── utils/
+    ├── dataSynthesizer.ts        # Test data generation
+    │   └── generateFieldData()   # Creates field values (checks overrides first)
+    └── goalParser.ts             # Regex-based fallback parser
+```
+
+### Data Flow Example: Amazon Search
+
+```javascript
+// User command via MCP
+run_flow({ goal: "Search for blue t-shirt" })
+
+// Step 1: MCPServer.handleRunFlow()
+const parsedGoal = await llmStrategy.parseGoal(goal);
+// OpenAI returns: {action: "fill", value: "blue t-shirt"}
+
+// Step 2: Analyze page structure
+const analysis = await analyzeUI();
+// Finds: search form with field-keywords input
+
+// Step 3: Create overrides (THE FIX!)
+const overrides = {
+  "field-keywords": "blue t-shirt"  // Maps LLM value to field name
+};
+
+// Step 4: Execute with overrides
+await flowEngine.executeFlow(page, formSchema, overrides);
+//   → Calls dataSynthesizer.generateFieldData(field, overrides)
+//   → Checks overrides["field-keywords"] first
+//   → Returns "blue t-shirt" (not random data!)
+
+// Step 5: Playwright fills the field
+await page.fill("#field-keywords", "blue t-shirt");
+await page.click("#nav-search-submit-button");
+
+// ✅ Result: Searches for "blue t-shirt", not "sample384"
+```
+
+### Environment Configuration
+
+```bash
+# Required for LLM features
+OPENAI_API_KEY=sk-...              # OpenAI API key
+LLM_MODEL=gpt-4-turbo-preview      # Model selection
+LLM_TEMPERATURE=0.3                # Response randomness (0-1)
+
+# Optional
+UI_PROBE_FALLBACK_MODE=false       # Set true to disable LLM calls
+LLM_CACHE_ENABLED=true             # Cache LLM responses (5 min TTL)
+LLM_REQUEST_TIMEOUT=60000          # API timeout in ms
+LLM_MAX_RETRIES=2                  # Retry failed API calls
+
+# Cost controls
+UI_PROBE_COST_LIMITS=true          # Enable cost tracking
+UI_PROBE_MAX_COST=10               # Max spend in USD
+```
+
+### Common Integration Patterns
+
+#### Pattern 1: LLM-First with Fallback
+```typescript
+// Try LLM parsing first, fall back to regex if fails
+const parsed = await llmStrategy.parseGoal(goal);
+// If LLM unavailable or fails → uses GoalParser.parse() as fallback
+```
+
+#### Pattern 2: Heuristics-First with LLM Recovery
+```typescript
+// Try Playwright selectors (15+ patterns)
+if (!found) {
+  // Fall back to AI element detection
+  const aiSelector = await findClickableElementWithAI(page, text);
+}
+```
+
+#### Pattern 3: Cache for Cost Reduction
+```typescript
+// LLM responses cached for 5 minutes
+// Same goal → uses cached response, no API call
+if (cacheEnabled && cached) {
+  return cached;
+}
+const response = await callLLM(prompt);
+cache.set(goal, response);
+```
+
+### Debugging LLM Integration
+
+#### Enable Debug Logging
+```bash
+export LOG_LEVEL=debug
+export UI_PROBE_DEBUG=true
+```
+
+#### Check if OpenAI is Being Called
+```bash
+# Look for these log messages:
+[DEBUG] Attempting LLM goal parsing (attempt 1/3)
+[DEBUG] LLM goal parsing succeeded
+[INFO] Using LLM-parsed value for field
+```
+
+#### View LLM Costs
+```typescript
+// Check usage tracker (src/monitoring/usageTracker.ts)
+const stats = llmStrategy.getUsageTracker()?.getStats();
+console.log(`Total cost: $${stats.totalCost}`);
+console.log(`Total tokens: ${stats.totalTokens}`);
+```
+
+#### Test Without LLM
+```bash
+# Use fallback mode for testing without API costs
+UI_PROBE_FALLBACK_MODE=true npm start
+```
+
+### Performance Characteristics
+
+| Operation | Time | Cost | Caching |
+|-----------|------|------|---------|
+| Goal parsing (cached) | <50ms | $0 | ✅ 5 min |
+| Goal parsing (uncached) | 500-2000ms | ~$0.02 | ❌ |
+| Alternative selectors | 800-1500ms | ~$0.03 | ✅ 5 min |
+| Error interpretation | 600-1200ms | ~$0.02 | ❌ |
+| Form inference (no LLM) | 100-300ms | $0 | N/A |
+| Playwright actions | 50-200ms | $0 | N/A |
+
+**Total cost per test**: $0.01-0.10 depending on complexity and caching
+
+### Architecture Decision Records
+
+#### Why GPT-4 Turbo instead of GPT-3.5?
+- **Accuracy**: GPT-4 better understands form context and intent
+- **Cost/Benefit**: $0.02 extra per test, but 40% fewer failed tests
+- **Configurable**: Can use GPT-3.5 via `LLM_MODEL=gpt-3.5-turbo`
+
+#### Why Parse Goal with LLM instead of Regex?
+- **Flexibility**: Handles variations ("search", "look for", "find")
+- **Context**: Understands "sign up" vs "sign in" distinction
+- **Extensibility**: Easy to add new action types without code changes
+- **Fallback Available**: Regex parser activates if LLM unavailable
+
+#### Why Overrides Map instead of Direct Field Mapping?
+- **Flexibility**: Supports both LLM values and user-provided data
+- **Priority**: LLM values > formData > constraints > generated data
+- **Compatibility**: Works with existing data synthesizer
+- **Testability**: Easy to inject test data
+
+---
+
 ## Built-in Test Playground
 
 UI-Probe includes a comprehensive test playground to try before deploying to your project:

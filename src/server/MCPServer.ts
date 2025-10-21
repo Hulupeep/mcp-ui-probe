@@ -1400,10 +1400,45 @@ export class MCPServer {
         // Step 5: Execute flow
         steps.push({ step: 'execute', status: 'starting' });
         const page = await this.driver.getPage();
+
+        // ✨ FIX: Create overrides from LLM-parsed values
+        const overrides: Record<string, any> = {};
+
+        // If LLM parsed a specific value (like "blue t-shirt"), use it
+        if (parsedGoal.value) {
+          // Find the main text/search input field
+          const mainField = inference.formSchema.fields.find(f =>
+            f.type === 'text' ||
+            f.type === 'search' ||
+            f.name.toLowerCase().includes('search') ||
+            f.name.toLowerCase().includes('query') ||
+            f.name.toLowerCase().includes('keyword') ||
+            f.name.toLowerCase().includes('q')
+          );
+
+          if (mainField) {
+            overrides[mainField.name] = parsedGoal.value;
+            logger.info('Using LLM-parsed value for field', {
+              field: mainField.name,
+              value: parsedGoal.value
+            });
+          }
+        }
+
+        // If LLM provided formData, merge it
+        if (parsedGoal.formData) {
+          Object.assign(overrides, parsedGoal.formData);
+        }
+
+        // Also apply any constraints
+        if (parsedGoal.constraints) {
+          Object.assign(overrides, parsedGoal.constraints);
+        }
+
         const testRun = await flowEngine.executeFlow(
           page,
           inference.formSchema,
-          parsedGoal.constraints
+          overrides  // ✨ Now using LLM values instead of random data
         );
 
         // Store test run

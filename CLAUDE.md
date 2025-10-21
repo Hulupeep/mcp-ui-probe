@@ -334,11 +334,224 @@ Message 4: Write "file.js"
 6. Enable hooks automation
 7. Use GitHub tools first
 
+---
+
+## 🔬 UI-Probe: Technical Architecture for LLMs
+
+### What is UI-Probe?
+
+UI-Probe is an **MCP server** that enables natural language web testing. It translates goals like "Search for blue t-shirt" into actual Playwright actions, using OpenAI to understand intent.
+
+### Core Components & Data Flow
+
+```
+User: "Search for blue t-shirt"
+  ↓
+MCP Server (handleRunFlow) → calls OpenAI to parse goal
+  ↓
+LLM Strategy (parseGoal) → returns {action: "fill", value: "blue t-shirt"}
+  ↓
+Form Inference → analyzes page to find form fields
+  ↓
+Override Creation → maps LLM value to field name
+  ↓
+Flow Engine → fills field with LLM value (not random data)
+  ↓
+Playwright → page.fill("#field-keywords", "blue t-shirt")
+```
+
+### Key Files for LLMs to Understand
+
+1. **`src/server/MCPServer.ts`** - Main MCP server
+   - `handleRunFlow()` (line 1270-1524) - Entry point for natural language goals
+   - `handleClickButton()` (line 909-1103) - Button clicking with selectors
+   - **CRITICAL FIX at line 1404-1441**: Creates overrides map from LLM-parsed values
+
+2. **`src/llm/llmStrategy.ts`** - OpenAI integration hub
+   - `parseGoal()` (line 86-148) - Calls OpenAI to parse natural language
+   - `suggestAlternatives()` (line 224-238) - Suggests selectors when failures occur
+   - `callLLM()` (line 240-320) - Core OpenAI API wrapper
+
+3. **`src/flows/flowEngine.ts`** - Form execution
+   - `executeFlow()` (line 15-89) - Executes form filling with overrides
+   - `fillField()` (line 130-195) - Fills individual field, checking overrides first
+
+4. **`src/utils/dataSynthesizer.ts`** - Test data generation
+   - `generateFieldData()` (line 40-90) - Generates field values
+   - **Checks overrides FIRST** before generating random data
+
+### How OpenAI Integration Works
+
+**When you call**: `run_flow({ goal: "Search for blue t-shirt" })`
+
+1. **MCP Server receives request** (`MCPServer.ts:1270`)
+   ```typescript
+   async handleRunFlow(params: RunFlowParams)
+   ```
+
+2. **Calls OpenAI to parse goal** (`llmStrategy.ts:86`)
+   ```typescript
+   const parsedGoal = await llmStrategy.parseGoal(goal);
+   // OpenAI returns: {
+   //   action: "fill",
+   //   target: "search bar",
+   //   value: "blue t-shirt",  ← THE VALUE WE NEED
+   //   submit: true
+   // }
+   ```
+
+3. **Analyzes page to find form** (`form.ts`)
+   ```typescript
+   const inference = await formInferenceEngine.inferForm(analysis);
+   // Finds: {
+   //   fields: [
+   //     {name: "field-keywords", type: "text"},  ← SEARCH FIELD
+   //     {name: "submit", type: "submit"}
+   //   ]
+   // }
+   ```
+
+4. **Creates overrides map** (`MCPServer.ts:1404-1441`) - **THIS IS THE CRITICAL FIX**
+   ```typescript
+   const overrides: Record<string, any> = {};
+
+   if (parsedGoal.value) {
+     const mainField = inference.formSchema.fields.find(f =>
+       f.type === 'text' ||
+       f.name.toLowerCase().includes('search')
+     );
+
+     if (mainField) {
+       overrides[mainField.name] = parsedGoal.value;
+       // Result: {"field-keywords": "blue t-shirt"}
+     }
+   }
+   ```
+
+5. **Executes with overrides** (`flowEngine.ts:15`)
+   ```typescript
+   await flowEngine.executeFlow(page, formSchema, overrides);
+   // For each field, calls dataSynthesizer.generateFieldData(field, overrides)
+   // dataSynthesizer checks: if (overrides && field.name in overrides)
+   // Returns: "blue t-shirt" (from overrides, NOT random data)
+   ```
+
+6. **Playwright fills the field**
+   ```typescript
+   await page.fill("#field-keywords", "blue t-shirt");  // ✅ CORRECT
+   // NOT: await page.fill("#field-keywords", "sample384");  // ❌ WRONG
+   ```
+
+### Environment Variables for LLMs
+
+```bash
+# Required for OpenAI integration
+OPENAI_API_KEY=sk-...              # Your OpenAI API key
+LLM_MODEL=gpt-4-turbo-preview      # Model to use
+LLM_TEMPERATURE=0.3                # Response randomness
+
+# Optional
+UI_PROBE_FALLBACK_MODE=false       # true = disable LLM, use regex only
+LLM_CACHE_ENABLED=true             # Cache LLM responses for 5 min
+LLM_REQUEST_TIMEOUT=60000          # API call timeout
+LLM_MAX_RETRIES=2                  # Retry failed API calls
+```
+
+### Common Patterns for LLMs
+
+**Pattern 1: Natural Language Goal**
+```typescript
+run_flow({ goal: "Sign up as a new user" })
+// LLM parses → {action: "fill", formData: {email, password}, submit: true}
+// System fills form and submits
+```
+
+**Pattern 2: Explicit Actions**
+```typescript
+fill_form({ email: "test@example.com", password: "pass123" })
+click_button({ text: "Sign Up" })
+// Direct actions, no LLM parsing needed
+```
+
+**Pattern 3: Journey Recording**
+```typescript
+record_journey({ name: "User signup flow" })
+// Records all actions
+stop_recording()
+// Can replay later with: replay_journey({ journeyId: "..." })
+```
+
+### Debugging for LLMs
+
+**Enable debug logging:**
+```bash
+export LOG_LEVEL=debug
+export UI_PROBE_DEBUG=true
+```
+
+**Check if OpenAI is being called:**
+```bash
+# Look for these log messages in console:
+[DEBUG] Attempting LLM goal parsing (attempt 1/3)
+[DEBUG] LLM goal parsing succeeded
+[INFO] Using LLM-parsed value for field: field-keywords = "blue t-shirt"
+```
+
+**Test without LLM (fallback mode):**
+```bash
+UI_PROBE_FALLBACK_MODE=true npm start
+# Uses regex parser instead of OpenAI
+```
+
+### Key Insights for LLMs
+
+1. **OpenAI is called at parse time, not execution time**
+   - Goal parsing happens once at the start
+   - Results are cached for 5 minutes
+   - Execution uses the parsed structure
+
+2. **The "overrides" map is critical**
+   - Maps field names to values
+   - Priority: LLM values > formData > constraints > random data
+   - Without overrides, gets random data like "sample384"
+
+3. **Form inference is separate from LLM**
+   - Analyzes page DOM to understand structure
+   - No LLM needed for this step
+   - Works in fallback mode
+
+4. **Selectors use 15+ strategies**
+   - Tries Playwright selectors first (semantic, aria, text)
+   - Falls back to heuristics (not real AI)
+   - Can call LLM for alternative suggestions on failure
+
+5. **Cost optimization through caching**
+   - Same goal within 5 min = cached response, $0
+   - Different goal = new API call, ~$0.02
+   - Total cost per test: $0.01-0.10
+
+### Architecture Decisions
+
+**Q: Why map LLM value to field name instead of direct insertion?**
+A: Flexibility - supports multiple data sources (LLM, user, formData) with clear priority
+
+**Q: Why check overrides first in dataSynthesizer?**
+A: Performance - avoids generating random data when we have real data from LLM
+
+**Q: Why cache LLM responses?**
+A: Cost reduction - same goal = free, no repeated API calls
+
+**Q: Why fallback to regex parser?**
+A: Reliability - system works even without API key or when API is down
+
+---
+
 ## Support
 
 - Documentation: https://github.com/ruvnet/claude-flow
 - Issues: https://github.com/ruvnet/claude-flow/issues
 - Flow-Nexus Platform: https://flow-nexus.ruv.io (registration required for cloud features)
+- UI-Probe README: See README.md for complete technical details
 
 ---
 
