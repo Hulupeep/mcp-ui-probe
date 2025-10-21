@@ -61,6 +61,10 @@ export interface ExecutionResult {
   duration: number;
   data?: any;
   error?: string;
+  // P1 multi-element iteration support
+  partialSuccess?: boolean;  // True if some elements succeeded, some failed
+  successCount?: number;     // Number of successful operations
+  errorCount?: number;       // Number of failed operations
 }
 
 // ============================================

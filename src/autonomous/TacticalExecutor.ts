@@ -7,7 +7,7 @@
  * - Fall back to Tier 3 on failure
  */
 
-import { Page } from 'playwright';
+import { Page, Locator } from 'playwright';
 import { logger } from '../utils/logger.js';
 import {
   StrategicStep,
@@ -63,6 +63,184 @@ export class TacticalExecutor {
         duration: Date.now() - startTime,
         error: error.message,
       };
+    }
+  }
+
+  /**
+   * Execute workflow step with multi-element iteration support (P1)
+   * Handles iterateAll, index, limit, offset, rangeStart, rangeEnd
+   */
+  async executeStepWithIteration(step: any, page: Page): Promise<ExecutionResult> {
+    const startTime = Date.now();
+
+    if (!step.selector) {
+      return {
+        success: false,
+        method: 'iteration',
+        attempts: 0,
+        duration: Date.now() - startTime,
+        error: 'No selector provided'
+      };
+    }
+
+    const locator = page.locator(step.selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        success: false,
+        method: 'iteration',
+        attempts: 0,
+        duration: Date.now() - startTime,
+        error: 'No elements found matching selector'
+      };
+    }
+
+    // Determine which elements to iterate over
+    const indices = this.determineIndices(step, count);
+
+    // Batch mode uses page.evaluate for performance
+    if (step.iterationMode === 'batch') {
+      return await this.executeBatchMode(step, page, indices, startTime);
+    }
+
+    // Sequential/parallel mode iterates individually
+    return await this.executeIterationMode(step, locator, indices, startTime);
+  }
+
+  /**
+   * Determine which element indices to iterate over
+   */
+  private determineIndices(step: any, totalCount: number): number[] {
+    // iterateAll: all elements
+    if (step.iterateAll) {
+      return Array.from({ length: totalCount }, (_, i) => i);
+    }
+
+    // index: specific element (first=0, last=-1, nth=n)
+    if (step.index !== undefined) {
+      const idx = step.index === -1 ? totalCount - 1 : step.index;
+      return [idx];
+    }
+
+    // limit/offset: first N elements with offset
+    if (step.limit !== undefined) {
+      const offset = step.offset || 0;
+      const limit = Math.min(step.limit, totalCount - offset);
+      return Array.from({ length: limit }, (_, i) => offset + i);
+    }
+
+    // rangeStart/rangeEnd: elements in range
+    if (step.rangeStart !== undefined && step.rangeEnd !== undefined) {
+      const start = step.rangeStart;
+      const end = Math.min(step.rangeEnd, totalCount - 1);
+      return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    }
+
+    // Default: first element only
+    return [0];
+  }
+
+  /**
+   * Execute in batch mode using page.evaluate
+   */
+  private async executeBatchMode(step: any, page: Page, indices: number[], startTime: number): Promise<ExecutionResult> {
+    try {
+      await page.evaluate(({ selector, action }) => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach((el: any) => {
+          if (action === 'click') el.click();
+        });
+      }, { selector: step.selector, action: step.action });
+
+      return {
+        success: true,
+        method: 'batch',
+        attempts: 1,
+        duration: Date.now() - startTime,
+        data: { count: indices.length }
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        method: 'batch',
+        attempts: 1,
+        duration: Date.now() - startTime,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Execute in sequential/parallel mode
+   */
+  private async executeIterationMode(step: any, locator: Locator, indices: number[], startTime: number): Promise<ExecutionResult> {
+    const results: any[] = [];
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const idx of indices) {
+      try {
+        const element = locator.nth(idx);
+        const result = await this.executeActionOnElement(step, element);
+        results.push(result);
+        if (result !== null && result !== undefined) {
+          successCount++;
+        }
+      } catch (error: any) {
+        errorCount++;
+        if (!step.optional) {
+          // Critical operation - fail immediately
+          return {
+            success: false,
+            method: 'iteration',
+            attempts: indices.length,
+            duration: Date.now() - startTime,
+            error: `Failed at index ${idx}: ${error.message}`,
+            successCount,
+            errorCount
+          };
+        }
+        // Optional operation - continue
+      }
+    }
+
+    // Return collected data for extraction operations
+    const isExtraction = step.action === 'extract';
+    return {
+      success: true,
+      method: 'iteration',
+      attempts: indices.length,
+      duration: Date.now() - startTime,
+      data: isExtraction ? results.filter(r => r !== null) : { count: indices.length },
+      partialSuccess: errorCount > 0,
+      successCount,
+      errorCount
+    };
+  }
+
+  /**
+   * Execute action on a single element
+   */
+  private async executeActionOnElement(step: any, element: Locator): Promise<any> {
+    switch (step.action) {
+      case 'click':
+        await element.click({ timeout: 3000 });
+        return null;
+
+      case 'fill':
+        await element.fill(step.value || '', { timeout: 3000 });
+        return null;
+
+      case 'extract':
+        return await element.textContent({ timeout: 3000 });
+
+      case 'scroll':
+        await element.scrollIntoViewIfNeeded({ timeout: 3000 });
+        return null;
+
+      default:
+        throw new Error(`Unknown action: ${step.action}`);
     }
   }
 
