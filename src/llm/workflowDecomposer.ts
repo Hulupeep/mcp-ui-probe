@@ -1,4 +1,5 @@
 import logger from '../utils/logger.js';
+import { ParsedGoal, GoalMetadata } from '../types/index.js';
 
 export interface WorkflowStep {
   action: string;
@@ -15,6 +16,34 @@ export interface WorkflowStep {
   generateData?: boolean;
   condition?: string;
   submit?: boolean;
+
+  // Multi-element iteration fields (P1 enhancement)
+  iterateAll?: boolean;           // True if quantifier is 'all'
+  index?: number;                 // For first (0), last (-1), nth (n)
+  limit?: number;                 // For "first N elements"
+  offset?: number;                // Starting offset for limited iteration
+  rangeStart?: number;            // For range iteration (start index)
+  rangeEnd?: number;              // For range iteration (end index)
+  selector?: string;              // CSS selector for finding elements
+
+  // Collection context
+  collection?: string;            // cart, table, list, grid, etc.
+  collectionScope?: string;       // Parent container context
+  nestedCollection?: boolean;     // True for nested iteration
+  parentCollection?: string;      // Parent collection name for nesting
+
+  // Filtering
+  filter?: string;                // visible, enabled, selected, etc.
+  attributeFilter?: {             // Attribute-based filtering
+    attribute: string;
+    value: string;
+  };
+
+  // Iteration mode
+  iterationMode?: 'sequential' | 'parallel' | 'batch';
+
+  // Extraction
+  extractionType?: 'text' | 'structured';
 }
 
 export class WorkflowDecomposer {
@@ -27,6 +56,39 @@ export class WorkflowDecomposer {
     conditional: /if\s+(.+?)\s+then\s+(.+?)(?:\s+else\s+(.+))?/gi,
     sequence: /(?:then|and then|after that|next)/gi
   };
+
+  /**
+   * Decompose goal from ParsedGoal with quantifier metadata
+   * This is the enhanced P1 method that handles multi-element iteration
+   */
+  async decomposeFromParsedGoal(parsedGoal: ParsedGoal): Promise<WorkflowStep[]> {
+    const metadata = parsedGoal.metadata || {};
+    const step: WorkflowStep = {
+      action: parsedGoal.action,
+      target: parsedGoal.target,
+      url: parsedGoal.url,
+      data: parsedGoal.formData,
+      value: parsedGoal.value,
+      submit: parsedGoal.submit
+    };
+
+    // Apply quantifier metadata
+    this.applyQuantifierMetadata(step, metadata);
+
+    // Apply collection metadata
+    this.applyCollectionMetadata(step, metadata);
+
+    // Apply iteration mode
+    this.applyIterationMode(step, metadata);
+
+    // Apply extraction metadata
+    this.applyExtractionMetadata(step, metadata);
+
+    // Generate selector based on target and metadata
+    this.generateSelector(step, metadata);
+
+    return [step];
+  }
 
   async decompose(goal: string): Promise<WorkflowStep[]> {
     const steps: WorkflowStep[] = [];
@@ -399,5 +461,153 @@ export class WorkflowDecomposer {
         }
       }
     }
+  }
+
+  /**
+   * Apply quantifier metadata to workflow step (P1)
+   */
+  private applyQuantifierMetadata(step: WorkflowStep, metadata: GoalMetadata): void {
+    if (!metadata.quantifier) return;
+
+    switch (metadata.quantifier) {
+      case 'all':
+        step.iterateAll = true;
+        break;
+
+      case 'first':
+        step.index = metadata.index ?? 0;
+        step.iterateAll = false;
+        break;
+
+      case 'last':
+        step.index = metadata.index ?? -1;
+        step.iterateAll = false;
+        break;
+
+      case 'nth':
+        if (metadata.limit !== undefined) {
+          // "first N elements"
+          step.limit = metadata.limit;
+          step.offset = metadata.offset ?? 0;
+          step.iterateAll = false;
+        } else {
+          // "nth element"
+          step.index = metadata.index;
+          step.iterateAll = false;
+        }
+        break;
+
+      case 'range':
+        step.rangeStart = metadata.rangeStart;
+        step.rangeEnd = metadata.rangeEnd;
+        step.iterateAll = false;
+        break;
+    }
+  }
+
+  /**
+   * Apply collection metadata to workflow step (P1)
+   */
+  private applyCollectionMetadata(step: WorkflowStep, metadata: GoalMetadata): void {
+    if (metadata.collection) {
+      step.collection = metadata.collection;
+    }
+
+    if (metadata.collectionScope) {
+      step.collectionScope = metadata.collectionScope;
+    }
+
+    if (metadata.nestedCollection) {
+      step.nestedCollection = metadata.nestedCollection;
+      step.parentCollection = metadata.parentCollection;
+    }
+
+    if (metadata.filter) {
+      step.filter = metadata.filter;
+    }
+
+    if (metadata.attributeFilter) {
+      step.attributeFilter = metadata.attributeFilter;
+    }
+  }
+
+  /**
+   * Apply iteration mode to workflow step (P1)
+   */
+  private applyIterationMode(step: WorkflowStep, metadata: GoalMetadata): void {
+    if (metadata.iterationMode) {
+      step.iterationMode = metadata.iterationMode;
+    }
+  }
+
+  /**
+   * Apply extraction metadata to workflow step (P1)
+   */
+  private applyExtractionMetadata(step: WorkflowStep, metadata: GoalMetadata): void {
+    if (metadata.extractionType) {
+      step.extractionType = metadata.extractionType;
+    }
+  }
+
+  /**
+   * Generate selector based on target and metadata (P1)
+   */
+  private generateSelector(step: WorkflowStep, metadata: GoalMetadata): void {
+    if (!step.target) return;
+
+    // Generate basic selector from target
+    const target = step.target.toLowerCase();
+
+    // Common element type mappings
+    const selectorMap: Record<string, string> = {
+      'button': 'button',
+      'buttons': 'button',
+      'link': 'a',
+      'links': 'a',
+      'checkbox': 'input[type="checkbox"]',
+      'checkboxes': 'input[type="checkbox"]',
+      'input': 'input',
+      'inputs': 'input',
+      'form': 'form',
+      'forms': 'form',
+      'item': '.item, li, [role="listitem"]',
+      'items': '.item, li, [role="listitem"]',
+      'product': '.product, [data-component-type="s-search-result"]',
+      'products': '.product, [data-component-type="s-search-result"]',
+      'price': '.price, .a-price, [data-price]',
+      'prices': '.price, .a-price, [data-price]',
+      'row': 'tr',
+      'rows': 'tr',
+      'card': '.card',
+      'cards': '.card'
+    };
+
+    let selector = selectorMap[target] || target;
+
+    // Scope to collection if specified
+    if (step.collectionScope) {
+      const collectionSelectors: Record<string, string> = {
+        'cart': '.cart, #cart, [data-component="cart"]',
+        'table': 'table',
+        'list': 'ul, ol, [role="list"]',
+        'grid': '.grid, [role="grid"]',
+        'menu': 'nav, [role="menu"]'
+      };
+
+      const collectionSelector = collectionSelectors[step.collectionScope] || `.${step.collectionScope}`;
+      selector = `${collectionSelector} ${selector}`;
+    }
+
+    // Apply filters
+    if (step.filter === 'visible') {
+      selector = `${selector}:visible`;
+    }
+
+    if (step.attributeFilter) {
+      const { attribute, value } = step.attributeFilter;
+      selector = `${selector}[${attribute}="${value}"]`;
+    }
+
+    step.selector = selector;
   }
 }
