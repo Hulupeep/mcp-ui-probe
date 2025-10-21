@@ -1,49 +1,55 @@
 /**
  * Natural Language Goal Parser for run_flow
  * Properly interprets user intentions from natural language
+ * Enhanced with P1 quantifiers, collections, and domain detection
  */
 
-export interface ParsedGoal {
-  action: 'navigate' | 'click' | 'fill' | 'submit' | 'test' | 'verify';
-  target?: string;
-  targetType?: 'button' | 'link' | 'form' | 'field' | 'page';
-  formGoal?: 'login' | 'signup' | 'register' | 'checkout' | 'contact' | 'search' | 'custom';
-  constraints?: Record<string, any>;
-}
+import { ParsedGoal } from '../types/index.js';
+import { GoalEnhancer } from './goalEnhancer.js';
 
 export class GoalParser {
   /**
    * Parse natural language goal into structured actions
+   * Now enhanced with quantifiers, collections, and domain metadata
    */
   static parse(goal: string): ParsedGoal {
     const lowerGoal = goal.toLowerCase();
 
+    // Get base parsed goal
+    let parsedGoal: ParsedGoal;
+
     // Navigation patterns
     if (this.isNavigationGoal(lowerGoal)) {
-      return this.parseNavigationGoal(goal);
+      parsedGoal = this.parseNavigationGoal(goal);
     }
-
     // Click/button patterns
-    if (this.isClickGoal(lowerGoal)) {
-      return this.parseClickGoal(goal);
+    else if (this.isClickGoal(lowerGoal)) {
+      parsedGoal = this.parseClickGoal(goal);
     }
-
     // Form patterns
-    if (this.isFormGoal(lowerGoal)) {
-      return this.parseFormGoal(goal);
+    else if (this.isFormGoal(lowerGoal)) {
+      parsedGoal = this.parseFormGoal(goal);
     }
-
     // Test/verification patterns
-    if (this.isTestGoal(lowerGoal)) {
-      return this.parseTestGoal(goal);
+    else if (this.isTestGoal(lowerGoal)) {
+      parsedGoal = this.parseTestGoal(goal);
+    }
+    // Default to form filling if unclear
+    else {
+      parsedGoal = {
+        action: 'fill',
+        constraints: { originalGoal: goal }
+      };
     }
 
-    // Default to form filling if unclear
-    return {
-      action: 'fill',
-      formGoal: 'custom',
-      constraints: { originalGoal: goal }
+    // Enhance with quantifiers, collections, and domain metadata
+    const enhancedMetadata = GoalEnhancer.enhance(goal);
+    parsedGoal.metadata = {
+      ...parsedGoal.metadata,
+      ...enhancedMetadata
     };
+
+    return parsedGoal;
   }
 
   private static isNavigationGoal(goal: string): boolean {
@@ -64,7 +70,7 @@ export class GoalParser {
       /click (?:on )?(?:the )?/i,
       /press (?:the )?/i,
       /tap (?:on )?/i,
-      /select (?:the )?.*(?:button|link|option)/i,
+      /select (?:all |every |each |the )?(?:first |last )?(checkboxes?|buttons?|links?|options?|items?|products?|cards?)/i,
       /(?:button|link) (?:named|labeled|with text)/i
     ];
     return patterns.some(p => p.test(goal));
@@ -72,7 +78,7 @@ export class GoalParser {
 
   private static isFormGoal(goal: string): boolean {
     const patterns = [
-      /fill(?:ing)? (?:in |out )?(?:the )?(?:form|fields?)/i,
+      /fill(?:ing)? (?:in |out |all )?(?:the )?(?:form|fields?|input)/i,
       /submit/i,
       /sign ?(?:up|in)/i,
       /log ?(?:in|out)/i,
@@ -120,8 +126,12 @@ export class GoalParser {
   }
 
   private static parseClickGoal(goal: string): ParsedGoal {
-    // Extract button/link text
+    // Extract button/link text with support for quantifiers
     const patterns = [
+      // "select all checkboxes" or "select every product"
+      /(?:select|click|press|tap)\s+(?:on\s+)?(?:all|every|each|the\s+first|the\s+last|the\s+\d+(?:st|nd|rd|th))?\s*(checkboxes?|buttons?|links?|options?|items?|products?|cards?)\b/i,
+      // "click all buttons" or "click the first button"
+      /click\s+(?:on\s+)?(?:all|every|each|the\s+first|the\s+last|the\s+\d+(?:st|nd|rd|th))?\s*([a-z]+s?|[a-z]+es)\b/i,
       // "click the 'Sign Up' button"
       /click\s+(?:on\s+)?(?:the\s+)?['""]([^'"]+)['""](?:\s+button|\s+link)?/i,
       // "click the Sign Up button"
@@ -135,12 +145,27 @@ export class GoalParser {
     for (const pattern of patterns) {
       const match = goal.match(pattern);
       if (match && match[1]) {
+        const target = match[1].trim();
+        // Skip if target is just a quantifier word
+        if (['all', 'every', 'each', 'first', 'last', 'some'].includes(target.toLowerCase())) {
+          continue;
+        }
         return {
           action: 'click',
-          target: match[1].trim(),
-          targetType: goal.includes('link') ? 'link' : 'button'
+          target,
+          targetType: goal.includes('link') ? 'link' : (goal.includes('checkbox') ? 'checkbox' : 'button')
         };
       }
+    }
+
+    // If no specific target found, extract the element type (button, link, etc.)
+    const typeMatch = goal.match(/(?:all|every|first|last|the\s+\d+(?:st|nd|rd|th))?\s*(buttons?|links?|checkboxes?|items?|products?|cards?)/i);
+    if (typeMatch) {
+      return {
+        action: 'click',
+        target: typeMatch[1],
+        targetType: 'button'
+      };
     }
 
     // Generic click goal
@@ -153,21 +178,11 @@ export class GoalParser {
   private static parseFormGoal(goal: string): ParsedGoal {
     const lowerGoal = goal.toLowerCase();
 
-    // Determine form type
-    let formGoal: ParsedGoal['formGoal'] = 'custom';
-
-    if (lowerGoal.includes('sign up') || lowerGoal.includes('signup') ||
-        lowerGoal.includes('register') || lowerGoal.includes('create account')) {
-      formGoal = 'signup';
-    } else if (lowerGoal.includes('sign in') || lowerGoal.includes('signin') ||
-               lowerGoal.includes('log in') || lowerGoal.includes('login')) {
-      formGoal = 'login';
-    } else if (lowerGoal.includes('checkout') || lowerGoal.includes('payment')) {
-      formGoal = 'checkout';
-    } else if (lowerGoal.includes('contact') || lowerGoal.includes('message')) {
-      formGoal = 'contact';
-    } else if (lowerGoal.includes('search')) {
-      formGoal = 'search';
+    // Extract target field type for fill actions
+    let target: string | undefined;
+    const fillMatch = goal.match(/fill\s+(?:all\s+)?(?:the\s+)?(?:(?:first|last|fifth|second|third|\d+(?:st|nd|rd|th))\s+)?([a-z]+\s+fields?|fields?|inputs?)/i);
+    if (fillMatch) {
+      target = fillMatch[1];
     }
 
     // Extract specific field values mentioned in the goal
@@ -185,6 +200,12 @@ export class GoalParser {
       constraints.password = passwordMatch[1];
     }
 
+    // Extract fill value mentioned in goal
+    const valueMatch = goal.match(/with\s+([^,\.;]+)/i);
+    if (valueMatch && !lowerGoal.includes('with class')) {
+      constraints.fillValue = valueMatch[1].trim();
+    }
+
     // Check for specific instructions
     if (lowerGoal.includes('invalid')) {
       constraints.useInvalidData = true;
@@ -198,8 +219,9 @@ export class GoalParser {
 
     return {
       action: lowerGoal.includes('submit') ? 'submit' : 'fill',
+      target,
       targetType: 'form',
-      formGoal,
+      value: constraints.fillValue,
       constraints
     };
   }

@@ -10,6 +10,71 @@ export interface MCPToolResult {
 }
 
 // Natural Language Goal Parsing Types
+
+// Quantifier types for element selection
+export type Quantifier = 'all' | 'first' | 'last' | 'nth' | 'range';
+
+// Domain types for contextual optimization
+export type DomainType = 'e-commerce' | 'form' | 'navigation' | 'search' | 'content' | 'social';
+
+// Collection metadata for multi-element operations
+export interface CollectionMetadata {
+  collection?: string; // cart, list, table, grid, etc.
+  collectionScope?: string; // parent container context
+  nestedCollection?: boolean;
+  parentCollection?: string;
+  filter?: string; // visible, enabled, etc.
+  attributeFilter?: {
+    attribute: string;
+    value: string;
+  };
+  limit?: number;
+  offset?: number;
+  rangeStart?: number;
+  rangeEnd?: number;
+}
+
+// Quantifier metadata for element selection
+export interface QuantifierMetadata {
+  quantifier?: Quantifier;
+  index?: number; // for nth, first (0), last (-1)
+  expectMultiple?: boolean;
+  sequential?: boolean; // execute one by one vs batch
+  iterationMode?: 'sequential' | 'parallel' | 'batch';
+  batchOperation?: boolean;
+  selectorStrategy?: string;
+}
+
+// Domain metadata for contextual optimization
+export interface DomainMetadata {
+  domain?: DomainType;
+  domains?: DomainType[]; // for multi-domain scenarios
+  domainAction?: string; // add-to-cart, checkout, filter, etc.
+  domainEntities?: string[]; // product, wishlist, etc.
+  formType?: string; // registration, login, contact, etc.
+  navType?: string; // menu, breadcrumb, tab, pagination
+  playbook?: string; // suggested flow template
+  expectedSteps?: string[];
+  expectedFields?: string[];
+  requiresValidation?: boolean;
+  contentType?: string; // article, video, pdf
+  mediaAction?: string; // play, pause, download
+  platform?: string; // social platform
+  priceFilter?: any;
+  searchQuery?: string;
+  sortBy?: string;
+  sortOrder?: 'ascending' | 'descending';
+  direction?: 'next' | 'previous';
+  extractionType?: 'text' | 'structured';
+}
+
+// Extended metadata combining all enhancement types
+export interface GoalMetadata extends QuantifierMetadata, CollectionMetadata, DomainMetadata {
+  confidence?: number;
+  intent?: string;
+  [key: string]: any; // Allow additional custom metadata
+}
+
 export interface ParsedGoal {
   action: string;
   target?: string;
@@ -19,7 +84,7 @@ export interface ParsedGoal {
   formData?: Record<string, any>;
   submit?: boolean;
   steps?: any[];
-  metadata?: Record<string, any>;
+  metadata?: GoalMetadata;
   constraints?: any;
 }
 
