@@ -16,6 +16,12 @@ if (!existsSync(logsDir)) {
 const isDebugMode = process.env.UI_PROBE_DEBUG === 'true' || process.env.UI_PROBE_DEBUG === '1';
 const logLevel = isDebugMode ? 'debug' : (process.env.LOG_LEVEL || 'info');
 
+// Detect if running as MCP server (stdout is used for JSON-RPC)
+// When MCP mode is active, we must NOT output colored text or any non-JSON to stdout
+const isMCPMode = process.env.MCP_MODE === 'true' ||
+                  process.argv.includes('--stdio') ||
+                  (process.stdout.isTTY === false && process.env.NODE_ENV !== 'test');
+
 // Custom format for debug mode
 const debugFormat = winston.format.printf(({ level, message, timestamp, ...meta }) => {
   const metaStr = Object.keys(meta).length > 0 ? JSON.stringify(meta, null, 2) : '';
@@ -44,13 +50,25 @@ export const logger = winston.createLogger({
   transports,
 });
 
-// Always add console transport
-logger.add(new winston.transports.Console({
-  format: winston.format.combine(
-    winston.format.colorize(),
-    isDebugMode ? debugFormat : winston.format.simple()
-  )
-}));
+// Add console transport (stderr for MCP mode, stdout otherwise)
+if (isMCPMode) {
+  // MCP mode: use stderr, no colors, JSON format to avoid breaking JSON-RPC
+  logger.add(new winston.transports.Console({
+    stderrLevels: ['error', 'warn', 'info', 'debug', 'verbose', 'silly'],
+    format: winston.format.combine(
+      winston.format.timestamp(),
+      winston.format.json()
+    )
+  }));
+} else {
+  // Normal mode: use stdout with colors
+  logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      isDebugMode ? debugFormat : winston.format.simple()
+    )
+  }));
+}
 
 // Add debug helper methods
 export const debugLog = {
