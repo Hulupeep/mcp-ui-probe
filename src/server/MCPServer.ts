@@ -13,6 +13,7 @@ import { LLMStrategy } from '../llm/llmStrategy.js';
 import { WorkflowDecomposer } from '../llm/workflowDecomposer.js';
 import { AdaptiveExecutor } from '../llm/adaptiveExecutor.js';
 import { ErrorEnhancer } from '../llm/errorEnhancer.js';
+import { AutonomousFlowEngine } from '../autonomous/AutonomousFlowEngine.js';
 import { FieldNamer } from '../utils/fieldNamer.js';
 import { JourneyRecorder } from '../journey/JourneyRecorder.js';
 import { JourneyPlayer } from '../journey/JourneyPlayer.js';
@@ -52,6 +53,7 @@ export class MCPServer {
   private workflowDecomposer: WorkflowDecomposer;
   private adaptiveExecutor: AdaptiveExecutor;
   private errorEnhancer: ErrorEnhancer;
+  private autonomousEngine: AutonomousFlowEngine;
 
   // Journey system components
   private journeyStorage: JourneyStorage;
@@ -81,6 +83,9 @@ export class MCPServer {
     this.workflowDecomposer = new WorkflowDecomposer();
     this.adaptiveExecutor = new AdaptiveExecutor();
     this.errorEnhancer = new ErrorEnhancer(this.llmStrategy);
+
+    // Initialize autonomous agent system (3-tier: Strategic → Tactical → Adaptive)
+    this.autonomousEngine = new AutonomousFlowEngine(this.llmStrategy);
 
     // Initialize journey system components
     this.journeyStorage = new JourneyStorage();
@@ -207,6 +212,11 @@ export class MCPServer {
                 constraints: {
                   type: 'object',
                   description: 'Flow constraints and options',
+                },
+                autonomous: {
+                  type: 'boolean',
+                  description: 'Use 3-tier autonomous agent system (Strategic → Tactical → Adaptive). Default: auto-detect based on goal complexity.',
+                  default: undefined,
                 },
               },
               required: ['goal'],
@@ -906,6 +916,37 @@ export class MCPServer {
     }
   }
 
+  /**
+   * Determine if a goal should use autonomous mode
+   * Complex goals with multiple steps or extraction requirements should use autonomous mode
+   */
+  private shouldUseAutonomousMode(goal: string): boolean {
+    const goalLower = goal.toLowerCase();
+
+    // Multi-step indicators
+    const hasMultipleSteps = goalLower.includes(' and ') ||
+                            goalLower.includes(' then ') ||
+                            goalLower.includes('find') && (goalLower.includes('get') || goalLower.includes('extract'));
+
+    // Extraction/data retrieval indicators
+    const hasExtraction = goalLower.includes('price') ||
+                         goalLower.includes('title') ||
+                         goalLower.includes('get') ||
+                         goalLower.includes('extract') ||
+                         goalLower.includes('find');
+
+    // Complex navigation indicators
+    const hasComplexNavigation = (goalLower.includes('click') || goalLower.includes('open')) &&
+                                 goalLower.includes('first') ||
+                                 goalLower.includes('result');
+
+    // Use autonomous mode for:
+    // 1. Multi-step workflows
+    // 2. Data extraction tasks
+    // 3. Complex navigation
+    return hasMultipleSteps || (hasExtraction && hasComplexNavigation);
+  }
+
   private async handleClickButton(params: any): Promise<MCPToolResult> {
     try {
       const page = await this.driver.getPage();
@@ -1272,6 +1313,44 @@ export class MCPServer {
     const steps: any[] = [];
 
     try {
+      // Check if autonomous mode is enabled (3-tier agent system)
+      // Autonomous mode: ON by default for complex goals, can be explicitly disabled
+      const useAutonomous = params.autonomous !== false &&
+        (params.autonomous === true || this.shouldUseAutonomousMode(params.goal));
+
+      if (useAutonomous) {
+        logger.info('🤖 Using autonomous agent system (3-tier: Strategic → Tactical → Adaptive)', { goal: params.goal });
+
+        const page = await this.driver.getPage();
+
+        // Navigate first if URL provided
+        if (params.url) {
+          await this.handleNavigate({ url: params.url });
+        }
+
+        // Execute goal using autonomous engine
+        const result = await this.autonomousEngine.executeGoal(params.goal, page, {
+          verbose: true,
+          enableLearning: true,
+        });
+
+        return {
+          success: result.success,
+          data: {
+            goal: params.goal,
+            mode: 'autonomous',
+            plan: result.plan,
+            results: result.results,
+            finalData: result.finalData,
+            totalDuration: result.totalDuration,
+            learnings: result.learnings,
+          },
+        };
+      }
+
+      // Legacy mode: Use original implementation
+      logger.info('Using legacy flow execution mode', { goal: params.goal });
+
       // Use LLM to parse the natural language goal, fall back to regex if no API key
       const parsedGoal = await this.llmStrategy.parseGoal(params.goal);
       logger.info('Parsed goal with LLM', { parsedGoal });

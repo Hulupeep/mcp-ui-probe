@@ -108,7 +108,7 @@ export class LLMStrategy {
         logger.debug(`Attempting LLM goal parsing (attempt ${attempt + 1}/${maxRetries + 1})`, { goal });
 
         const prompt = this.buildGoalParsingPrompt(goal);
-        const response = await this.callLLM(prompt, 'parseGoal');
+        const response = await this.callLLM(prompt, { operation: 'parseGoal' });
         const parsed = JSON.parse(response);
 
         // Validate and normalize the response
@@ -154,7 +154,7 @@ export class LLMStrategy {
 
     try {
       const prompt = this.buildErrorInterpretationPrompt(error, context);
-      const response = await this.callLLM(prompt, 'interpretError');
+      const response = await this.callLLM(prompt, { operation: 'interpretError' });
       return JSON.parse(response);
     } catch (err) {
       logger.warn('Error interpretation failed, using default', { err });
@@ -228,7 +228,7 @@ export class LLMStrategy {
 
     try {
       const prompt = this.buildAlternativeSelectorPrompt(failedSelector, pageContent);
-      const response = await this.callLLM(prompt, 'suggestAlternatives');
+      const response = await this.callLLM(prompt, { operation: 'suggestAlternatives' });
       const result = JSON.parse(response);
       return result.alternatives || [];
     } catch (error) {
@@ -237,7 +237,19 @@ export class LLMStrategy {
     }
   }
 
-  private async callLLM(prompt: string, operation: string = 'llm_call'): Promise<string> {
+  /**
+   * Public LLM call method with configurable options
+   * Used by autonomous agent system for strategic planning and investigation
+   */
+  public async callLLM(
+    prompt: string,
+    options: {
+      response_format?: { type: 'json_object' };
+      temperature?: number;
+      operation?: string;
+    } = {}
+  ): Promise<string> {
+    const operation = options.operation || 'llm_call';
     // Check if we've exceeded cost limits before making the call
     if (this.usageTracker?.hasExceededMaxCost()) {
       const stats = this.usageTracker.getStats();
@@ -271,23 +283,24 @@ export class LLMStrategy {
             }
           ],
           max_tokens: this.config.maxTokens,
-          temperature: this.config.temperature,
-          response_format: { type: "json_object" }
+          temperature: options.temperature ?? this.config.temperature,
+          response_format: options.response_format ? { type: "json_object" as const } : { type: "json_object" as const },
+          stream: false // Ensure non-streaming response
         }),
         timeoutPromise
       ]);
 
       // Record token usage
-      if (this.usageTracker && completion.usage) {
+      if (this.usageTracker && 'usage' in completion && completion.usage) {
         this.usageTracker.recordUsage(
           operation,
-          completion,
+          completion as any,
           this.config.model || 'gpt-4-turbo-preview',
           'openai'
         );
       }
 
-      const content = completion.choices[0]?.message?.content || '{}';
+      const content = ('choices' in completion) ? completion.choices[0]?.message?.content || '{}' : '{}';
 
       // Clean up response if it contains markdown code blocks
       let cleaned = content;

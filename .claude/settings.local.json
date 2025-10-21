@@ -7,5 +7,12 @@
       "mcp__sublinear-time-solver"
     ],
     "deny": []
-  }
+  },
+  "enabledMcpjsonServers": [
+    "claude-flow",
+    "ruv-swarm",
+    "flow-nexus",
+    "sublinear-solver"
+  ],
+  "enableAllProjectMcpServers": true
 }

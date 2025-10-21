@@ -204,6 +204,7 @@ export interface RunFlowParams {
   goal: string;
   url?: string;
   constraints?: Record<string, any>;
+  autonomous?: boolean; // Use 3-tier autonomous agent system (Strategic → Tactical → Adaptive)
 }
 
 export interface AssertSelectorsParams {
