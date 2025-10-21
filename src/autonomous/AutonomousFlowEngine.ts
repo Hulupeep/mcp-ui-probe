@@ -76,7 +76,7 @@ export class AutonomousFlowEngine {
 
           if (executionResult.success) {
             // Success! Record and move to next step
-            logger.info('✅ Step succeeded', {
+            logger.info('Step succeeded', {
               method: executionResult.method,
               selector: executionResult.selector,
             });
@@ -104,7 +104,7 @@ export class AutonomousFlowEngine {
           );
 
           if (adaptiveResult.success) {
-            logger.info('✅ Adaptive retry succeeded', {
+            logger.info('Adaptive retry succeeded', {
               method: adaptiveResult.method,
               attempts: adaptiveResult.attempts,
             });
@@ -117,7 +117,7 @@ export class AutonomousFlowEngine {
             });
           } else {
             // Even adaptive retry failed
-            logger.error('❌ Step failed after adaptive retry');
+            logger.error('Step failed after adaptive retry');
 
             if (step.required) {
               // Required step failed - abort execution

@@ -27,7 +27,8 @@ const command = args[0];
 switch (command) {
   case 'start':
   case 'server':
-    console.log('🚀 Starting UI-Probe MCP server...');
+    // Don't output to stdout - MCP servers use stdio for JSON-RPC
+    // Any console output will break the MCP protocol
     startMCPServer();
     break;
 
@@ -63,11 +64,15 @@ function startMCPServer() {
   const serverPath = join(__dirname, 'index.js');
   const child = spawn('node', [serverPath], {
     stdio: 'inherit',
-    env: { ...process.env }
+    env: {
+      ...process.env,
+      MCP_MODE: 'true'  // Explicitly tell logger we're in MCP mode
+    }
   });
 
   child.on('error', (err) => {
-    console.error('❌ Failed to start MCP server:', err);
+    // Use stderr for errors (stdout is reserved for MCP JSON-RPC)
+    process.stderr.write(`Failed to start MCP server: ${err.message}\n`);
     process.exit(1);
   });
 }

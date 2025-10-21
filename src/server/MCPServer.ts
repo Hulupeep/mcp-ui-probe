@@ -31,6 +31,7 @@ import {
   AssertSelectorsParams,
   CollectErrorsParams,
   ExportReportParams,
+  ExtractTextParams,
   TestRun
 } from '../types/index.js';
 import {
@@ -241,6 +242,39 @@ export class MCPServer {
                   description: 'Wait for navigation after click (default: true)',
                 },
               },
+            },
+          },
+          {
+            name: 'extract_text',
+            description: 'Extract text content from page elements matching a CSS selector',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                selector: {
+                  type: 'string',
+                  description: 'CSS selector for the element(s) to extract text from',
+                },
+                all: {
+                  type: 'boolean',
+                  description: 'Extract from all matching elements (default: false, only first match)',
+                  default: false,
+                },
+                attribute: {
+                  type: 'string',
+                  description: 'Extract attribute value instead of text content (e.g., "href", "src", "data-price")',
+                },
+                trim: {
+                  type: 'boolean',
+                  description: 'Trim whitespace from extracted text (default: true)',
+                  default: true,
+                },
+                limit: {
+                  type: 'number',
+                  description: 'Maximum number of elements to extract from when all=true (default: 10)',
+                  default: 10,
+                },
+              },
+              required: ['selector'],
             },
           },
           {
@@ -663,6 +697,10 @@ export class MCPServer {
             result = await this.handleClickButton(args as any);
             break;
 
+          case 'extract_text':
+            result = await this.handleExtractText(args as any);
+            break;
+
           case 'export_report':
             result = await this.handleExportReport(args as any);
             break;
@@ -945,6 +983,85 @@ export class MCPServer {
     // 2. Data extraction tasks
     // 3. Complex navigation
     return hasMultipleSteps || (hasExtraction && hasComplexNavigation);
+  }
+
+  private async handleExtractText(params: ExtractTextParams): Promise<MCPToolResult> {
+    try {
+      const page = await this.driver.getPage();
+      const { selector, all = false, attribute, trim = true, limit = 10 } = params;
+
+      logger.info('Extracting text', { selector, all, attribute, limit });
+
+      // Get element count first
+      const elements = page.locator(selector);
+      const count = await elements.count();
+
+      if (count === 0) {
+        throw new MCPUIError(
+          `No elements found matching selector: ${selector}`,
+          'E_ELEMENT_NOT_FOUND'
+        );
+      }
+
+      let extractedText: string | string[];
+
+      if (all) {
+        // Extract from multiple elements (up to limit)
+        const actualLimit = Math.min(count, limit);
+        const texts: string[] = [];
+
+        for (let i = 0; i < actualLimit; i++) {
+          const element = elements.nth(i);
+          let text: string;
+
+          if (attribute) {
+            // Extract attribute value
+            text = await element.getAttribute(attribute) || '';
+          } else {
+            // Extract text content
+            text = await element.textContent() || '';
+          }
+
+          if (trim) {
+            text = text.trim();
+          }
+
+          if (text) {
+            texts.push(text);
+          }
+        }
+
+        extractedText = texts;
+      } else {
+        // Extract from first element only
+        const element = elements.first();
+        let text: string;
+
+        if (attribute) {
+          text = await element.getAttribute(attribute) || '';
+        } else {
+          text = await element.textContent() || '';
+        }
+
+        if (trim) {
+          text = text.trim();
+        }
+
+        extractedText = text;
+      }
+
+      return {
+        success: true,
+        data: {
+          selector,
+          text: extractedText,
+          count: all ? (extractedText as string[]).length : 1,
+          totalMatches: count,
+        },
+      };
+    } catch (error) {
+      throw new MCPUIError('Extract text failed', 'E_EXTRACT_TEXT', error);
+    }
   }
 
   private async handleClickButton(params: any): Promise<MCPToolResult> {

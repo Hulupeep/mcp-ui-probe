@@ -261,3 +261,17 @@ export interface DropdownSelectionResult {
   componentType?: string;
   error?: string;
 }
+
+export interface ExtractTextParams {
+  selector: string;
+  all?: boolean;
+  attribute?: string;
+  trim?: boolean;
+  limit?: number;
+}
+
+export interface ExtractedText {
+  selector: string;
+  text: string | string[];
+  count: number;
+}

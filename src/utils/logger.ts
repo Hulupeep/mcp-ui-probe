@@ -18,8 +18,10 @@ const logLevel = isDebugMode ? 'debug' : (process.env.LOG_LEVEL || 'info');
 
 // Detect if running as MCP server (stdout is used for JSON-RPC)
 // When MCP mode is active, we must NOT output colored text or any non-JSON to stdout
+// MCP servers use stdio transport, so stdin will be a pipe when running as MCP
 const isMCPMode = process.env.MCP_MODE === 'true' ||
                   process.argv.includes('--stdio') ||
+                  !process.stdin.isTTY ||  // stdin is piped (typical for MCP)
                   (process.stdout.isTTY === false && process.env.NODE_ENV !== 'test');
 
 // Custom format for debug mode

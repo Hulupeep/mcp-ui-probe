@@ -130,7 +130,7 @@ export class UsageTracker {
     // Check warning threshold
     if (currentCost >= this.thresholds.warnAt && !this.warnings.has('warn')) {
       this.warnings.add('warn');
-      logger.warn('⚠️  Cost warning threshold reached', {
+      logger.warn('WARNING: Cost warning threshold reached', {
         currentCost: `$${currentCost.toFixed(2)}`,
         threshold: `$${this.thresholds.warnAt.toFixed(2)}`,
         maxCost: `$${this.thresholds.maxCost.toFixed(2)}`

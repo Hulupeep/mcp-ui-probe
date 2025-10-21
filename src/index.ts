@@ -16,7 +16,7 @@ async function main(): Promise<void> {
 
       if (fallbackMode) {
         logger.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        logger.warn('⚠️  UI-Probe running in FALLBACK MODE');
+        logger.warn('WARNING: UI-Probe running in FALLBACK MODE');
         logger.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         logger.warn('LLM features disabled - basic Playwright mode only');
         logger.warn('Available: Navigate, Click, Collect Errors');
@@ -30,7 +30,7 @@ async function main(): Promise<void> {
       } else {
         // Show warning but continue
         logger.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        logger.warn('⚠️  LLM API not configured');
+        logger.warn('WARNING: LLM API not configured');
         logger.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         logger.warn(`Status: ${llmHealth.error || 'No API key configured'}`);
         logger.warn('');
@@ -46,7 +46,7 @@ async function main(): Promise<void> {
         logger.warn('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       }
     } else {
-      logger.info(`✅ LLM available (${llmHealth.provider.toUpperCase()}) - all features enabled`);
+      logger.info(`LLM available (${llmHealth.provider.toUpperCase()}) - all features enabled`);
     }
   } catch (error) {
     logger.error('LLM validation failed', { error });
