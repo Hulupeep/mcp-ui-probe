@@ -15,32 +15,44 @@ import {
   ExecutionResult,
   PageSnapshot,
 } from './types.js';
+import { sublinearSolver } from '../services/SublinearSolverIntegration.js';
+import { pageRankValidator } from '../services/PageRankValidator.js';
 
 export class TacticalExecutor {
   private llmStrategy: any;
+  private usePageRank: boolean = true; // Toggle PageRank optimization
+  private enableValidation: boolean = true; // Enable PageRank validation
 
-  constructor(llmStrategy: any) {
+  constructor(llmStrategy: any, options: { usePageRank?: boolean; enableValidation?: boolean } = {}) {
     this.llmStrategy = llmStrategy;
+    this.usePageRank = options.usePageRank ?? true;
+    this.enableValidation = options.enableValidation ?? true;
   }
 
   /**
    * Execute a strategic step using tactical approach
+   * Enhanced with PageRank-based element prioritization
    */
   async executeStep(step: StrategicStep, page: Page): Promise<ExecutionResult> {
     const startTime = Date.now();
-    logger.info('Tactical execution started', { action: step.action, target: step.target });
+    logger.info('Tactical execution started', {
+      action: step.action,
+      target: step.target,
+      pageRankEnabled: this.usePageRank
+    });
 
     try {
       // Get page snapshot for LLM
       const snapshot = await this.capturePageSnapshot(page);
 
       // LLM suggests the "obvious" approach
-      const approach = await this.suggestApproach(step, snapshot);
+      const approach = await this.suggestApproach(step, snapshot, page);
 
       logger.debug('Tactical approach suggested', {
         method: approach.method,
         confidence: approach.confidence,
         selectors: approach.selectors.length,
+        pageRankOptimized: this.usePageRank
       });
 
       // Try the obvious approach
@@ -308,8 +320,9 @@ export class TacticalExecutor {
 
   /**
    * Ask LLM to suggest the obvious approach
+   * Enhanced with PageRank-based selector prioritization and multi-strategy fallback
    */
-  private async suggestApproach(step: StrategicStep, snapshot: PageSnapshot): Promise<TacticalApproach> {
+  private async suggestApproach(step: StrategicStep, snapshot: PageSnapshot, page: Page): Promise<TacticalApproach> {
     const prompt = this.buildTacticalPrompt(step, snapshot);
 
     try {
@@ -319,20 +332,220 @@ export class TacticalExecutor {
       });
 
       const parsed = JSON.parse(response);
+      const llmSelectors = parsed.selectors || [];
 
-      return {
-        method: parsed.method || 'unknown',
-        reasoning: parsed.reasoning || '',
-        selectors: parsed.selectors || [],
-        confidence: parsed.confidence || 0.5,
-        estimatedTime: parsed.estimatedTime || 1000,
-        fallbackStrategy: parsed.fallbackStrategy || 'investigate',
-      };
+      // MULTI-STRATEGY SELECTION: Choose best approach based on validation
+      const approach = await this.selectBestStrategy(step, page, llmSelectors, parsed);
+
+      return approach;
     } catch (error: any) {
       logger.error('LLM tactical suggestion failed', { error: error.message });
 
-      // Fallback to heuristic approach
-      return this.heuristicApproach(step, snapshot);
+      // Fallback to heuristic approach with optional PageRank
+      return this.heuristicApproach(step, snapshot, page);
+    }
+  }
+
+  /**
+   * Select best strategy: PageRank, LLM, Heuristic, or Hybrid
+   * Uses validation to detect when PageRank might be confidently wrong
+   */
+  private async selectBestStrategy(
+    step: StrategicStep,
+    page: Page,
+    llmSelectors: string[],
+    llmResponse: any
+  ): Promise<TacticalApproach> {
+    let strategy: 'pagerank' | 'llm' | 'heuristic' | 'hybrid' = 'llm';
+    let selectors = llmSelectors;
+    let confidence = llmResponse.confidence || 0.5;
+    let reasoning = llmResponse.reasoning || '';
+
+    // Try PageRank if enabled
+    if (this.usePageRank) {
+      try {
+        const ranked = await sublinearSolver.rankElementsWithPageRank(page, step.target);
+
+        // VALIDATION: Check if PageRank is reliable
+        let validation = { isValid: true, confidence: 0.8, shouldUseFallback: false, warnings: [] as string[] };
+
+        if (this.enableValidation) {
+          validation = pageRankValidator.validatePageRankResults(ranked, llmSelectors, step.target);
+
+          logger.debug('PageRank validation result', {
+            isValid: validation.isValid,
+            confidence: validation.confidence,
+            warnings: validation.warnings
+          });
+        }
+
+        // Determine strategy based on validation
+        const fallbackStrategy = pageRankValidator.selectFallbackStrategy(
+          validation.isValid,
+          validation.confidence,
+          llmSelectors.length > 0
+        );
+
+        strategy = fallbackStrategy.strategy;
+        confidence = fallbackStrategy.confidence;
+        reasoning = `${reasoning} [${fallbackStrategy.reasoning}]`;
+
+        logger.info('Strategy selected', {
+          strategy,
+          confidence,
+          pageRankValid: validation.isValid,
+          pageRankConfidence: validation.confidence
+        });
+
+        // Apply strategy
+        switch (strategy) {
+          case 'pagerank':
+            // Use pure PageRank
+            selectors = await this.optimizeSelectorsWithPageRank(llmSelectors, step, page);
+            break;
+
+          case 'hybrid':
+            // Combine PageRank with LLM (interleave)
+            selectors = await this.hybridStrategy(llmSelectors, ranked, step);
+            break;
+
+          case 'llm':
+            // Use LLM selectors as-is
+            selectors = llmSelectors;
+            break;
+
+          case 'heuristic':
+            // Fall back to heuristics
+            logger.warn('Falling back to heuristics due to low confidence');
+            break;
+        }
+
+      } catch (error: any) {
+        logger.error('PageRank strategy failed, using LLM', { error: error.message });
+        strategy = 'llm';
+        selectors = llmSelectors;
+      }
+    }
+
+    return {
+      method: `${strategy}_${llmResponse.method || 'unknown'}`,
+      reasoning,
+      selectors,
+      confidence,
+      estimatedTime: llmResponse.estimatedTime || 1000,
+      fallbackStrategy: llmResponse.fallbackStrategy || 'investigate',
+    };
+  }
+
+  /**
+   * Hybrid strategy: Interleave PageRank and LLM suggestions
+   * Example: [pagerank_top, llm_top, pagerank_2, llm_2, ...]
+   */
+  private async hybridStrategy(
+    llmSelectors: string[],
+    ranked: any[],
+    step: StrategicStep
+  ): Promise<string[]> {
+    const pageRankSelectors = ranked.slice(0, 5).map(r => r.element.selector);
+    const hybrid: string[] = [];
+    const seen = new Set<string>();
+
+    // Interleave (best of both worlds)
+    const maxLen = Math.max(pageRankSelectors.length, llmSelectors.length);
+    for (let i = 0; i < maxLen; i++) {
+      // Add PageRank suggestion
+      if (i < pageRankSelectors.length) {
+        const sel = pageRankSelectors[i];
+        if (!seen.has(sel)) {
+          hybrid.push(sel);
+          seen.add(sel);
+        }
+      }
+
+      // Add LLM suggestion
+      if (i < llmSelectors.length) {
+        const sel = llmSelectors[i];
+        if (!seen.has(sel)) {
+          hybrid.push(sel);
+          seen.add(sel);
+        }
+      }
+    }
+
+    logger.info('Hybrid strategy created', {
+      pageRankCount: pageRankSelectors.length,
+      llmCount: llmSelectors.length,
+      hybridCount: hybrid.length
+    });
+
+    return hybrid;
+  }
+
+  /**
+   * Optimize selector priority using PageRank
+   * This is the KEY ENHANCEMENT - ranks selectors by element importance
+   */
+  private async optimizeSelectorsWithPageRank(
+    selectors: string[],
+    step: StrategicStep,
+    page: Page
+  ): Promise<string[]> {
+    try {
+      // Get top ranked elements for this goal
+      const rankedElements = await sublinearSolver.rankElementsWithPageRank(page, step.target);
+
+      if (rankedElements.length === 0) {
+        logger.warn('No ranked elements found, using original selectors');
+        return selectors;
+      }
+
+      // Map selectors to ranked elements
+      const selectorScores = new Map<string, number>();
+
+      for (const selector of selectors) {
+        try {
+          const matchingElement = rankedElements.find(re =>
+            re.element.selector === selector ||
+            re.element.text?.toLowerCase().includes(selector.toLowerCase())
+          );
+
+          if (matchingElement) {
+            selectorScores.set(selector, matchingElement.rank);
+          } else {
+            selectorScores.set(selector, 0.1); // Low default score
+          }
+        } catch (error) {
+          selectorScores.set(selector, 0.05); // Very low score for problematic selectors
+        }
+      }
+
+      // Add top PageRank elements that might not be in original selectors
+      const topElements = rankedElements.slice(0, 3);
+      for (const elem of topElements) {
+        if (!selectors.includes(elem.element.selector)) {
+          selectors.push(elem.element.selector);
+          selectorScores.set(elem.element.selector, elem.rank);
+        }
+      }
+
+      // Sort selectors by PageRank score (descending)
+      const sortedSelectors = selectors.sort((a, b) => {
+        const scoreA = selectorScores.get(a) || 0;
+        const scoreB = selectorScores.get(b) || 0;
+        return scoreB - scoreA;
+      });
+
+      logger.info('PageRank selector optimization complete', {
+        top3Selectors: sortedSelectors.slice(0, 3),
+        top3Scores: sortedSelectors.slice(0, 3).map(s => selectorScores.get(s))
+      });
+
+      return sortedSelectors;
+    } catch (error: any) {
+      logger.error('PageRank optimization failed, using original selectors', {
+        error: error.message
+      });
+      return selectors;
     }
   }
 
@@ -386,6 +599,7 @@ Think step-by-step about what's OBVIOUS, then output ONLY the JSON.`;
 
   /**
    * Try the suggested approach
+   * Enhanced with result tracking for adaptive learning
    */
   private async tryApproach(
     step: StrategicStep,
@@ -393,6 +607,7 @@ Think step-by-step about what's OBVIOUS, then output ONLY the JSON.`;
     page: Page
   ): Promise<ExecutionResult> {
     let attempts = 0;
+    const isPageRankStrategy = approach.method.includes('pagerank') || approach.method.includes('hybrid');
 
     for (const selector of approach.selectors) {
       attempts++;
@@ -405,7 +620,17 @@ Think step-by-step about what's OBVIOUS, then output ONLY the JSON.`;
             method: approach.method,
             selector,
             attempts,
+            strategyUsed: isPageRankStrategy ? 'pagerank' : 'other'
           });
+
+          // TRACKING: Record success for adaptive learning
+          if (this.enableValidation && isPageRankStrategy) {
+            pageRankValidator.recordResult(true, approach.confidence);
+            logger.debug('PageRank success recorded', {
+              confidence: approach.confidence,
+              attempts
+            });
+          }
 
           return {
             success: true,
@@ -422,6 +647,21 @@ Think step-by-step about what's OBVIOUS, then output ONLY the JSON.`;
     }
 
     // All selectors failed
+    logger.warn('All tactical approaches failed', {
+      method: approach.method,
+      attempts,
+      selectorsCount: approach.selectors.length
+    });
+
+    // TRACKING: Record failure for adaptive learning
+    if (this.enableValidation && isPageRankStrategy) {
+      pageRankValidator.recordResult(false, approach.confidence);
+      logger.debug('PageRank failure recorded', {
+        confidence: approach.confidence,
+        attempts
+      });
+    }
+
     return {
       success: false,
       method: approach.method,
@@ -475,8 +715,9 @@ Think step-by-step about what's OBVIOUS, then output ONLY the JSON.`;
 
   /**
    * Fallback heuristic approach when LLM fails
+   * Enhanced with optional PageRank
    */
-  private heuristicApproach(step: StrategicStep, snapshot: PageSnapshot): TacticalApproach {
+  private heuristicApproach(step: StrategicStep, snapshot: PageSnapshot, page?: Page): TacticalApproach {
     const selectors: string[] = [];
 
     // Simple heuristics based on action type
@@ -521,11 +762,20 @@ Think step-by-step about what's OBVIOUS, then output ONLY the JSON.`;
         break;
     }
 
+    // If PageRank is enabled and page is available, optimize selectors
+    if (this.usePageRank && page) {
+      this.optimizeSelectorsWithPageRank(selectors, step, page).then(optimized => {
+        selectors.splice(0, selectors.length, ...optimized);
+      }).catch(err => {
+        logger.debug('PageRank optimization in heuristic failed', { error: err.message });
+      });
+    }
+
     return {
       method: `heuristic_${step.action}`,
-      reasoning: 'Fallback heuristic approach',
+      reasoning: 'Fallback heuristic approach' + (this.usePageRank ? ' with PageRank' : ''),
       selectors,
-      confidence: 0.4,
+      confidence: this.usePageRank ? 0.5 : 0.4,
       estimatedTime: 1000,
       fallbackStrategy: 'investigate',
     };

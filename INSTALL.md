@@ -70,7 +70,28 @@ cd /path/to/your/project
 claude mcp add --scope project ui-probe node /absolute/path/to/mcp-ui-probe/dist/index.js
 ```
 
-### 8. Test It Works
+### 8. Add to Codex CLI
+
+If you use the Codex CLI, register the server globally so it can be reused across projects:
+
+```bash
+# Make sure the build step has produced dist/index.js first
+cd /absolute/path/to/mcp-ui-probe
+npm run build
+
+# Add the server with the environment variables Codex should pass through
+codex mcp add mcp-ui-probe \
+  --env OPENAI_API_KEY=<your-openai-key> \
+  --env LLM_PROVIDER=<openai-or-anthropic> \
+  -- node /absolute/path/to/mcp-ui-probe/dist/index.js
+
+# Confirm Codex sees it
+codex mcp list
+```
+
+Replace the placeholder values with whichever environment variables you want Codex to provide. You can repeat `--env KEY=VALUE` for additional variables (for example `UI_PROBE_JOURNEY_DIR`).
+
+### 9. Test It Works
 
 ```bash
 # Restart Claude Code
